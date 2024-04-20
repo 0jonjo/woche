@@ -1,6 +1,6 @@
 # Woche
 
-Woche is a collection of Bash scripts designed to help manage weekly tasks. It allows you to create a new Markdown file for the current week and add tasks to specific days. Woche means week in German, the days of the week are represented in German (Montag, Dienstag, Mittwoch, Donnerstag, Freitag, Samstag, Sonntag) only for study the language.
+Woche is a collection of Bash scripts designed to help manage weekly tasks. It allows you to create a new Markdown file for the current week and add tasks to specific days. Woche means week in German, the days of the week are represented in this language (Montag, Dienstag, Mittwoch, Donnerstag, Freitag, Samstag and Sonntag) for study purposes only.
 
 ## Features
 
@@ -10,7 +10,7 @@ Woche is a collection of Bash scripts designed to help manage weekly tasks. It a
 
 ## Usage
 
-To create a new Markdown file for the current week (starts in Monday):
+1. To create a new Markdown file for the current week (starts in Monday):
 
 ```bash
 ./woche.sh create
@@ -20,7 +20,7 @@ The file 240422.md has been created.
 ```
 It uses the YYMMDD format.
 
-To add a task to a specific day:
+2. To add a task to a specific day:
 
 ```bash
 ./woche.sh <day> "<task>"
@@ -32,15 +32,15 @@ Replace `<day>` with the day of the week (in German: mon, die, mit, don, frei, s
 ./woche.sh mon "Test"
 
 Output:
-Task added to Montag.
+Task 'Test' added to Montag.
 ```
-To obtain instructions use help.
+3. To obtain instructions use help.
 
 ```bash
 ./woche.sh help
 ```
 
-### Tips
+## Tips
 - To change de path where the files are created changing the path variable in `woche.sh` file.
 - To change the format of date in the Markdown file change start_day in line 21.
 - To use the name of the days in English, change the woche_array for week_array in line 53.

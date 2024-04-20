@@ -12,11 +12,6 @@ if [ "$#" -gt 2 ]; then
     exit 1
 fi
 
-if [ "$1" = "help" ]; then
-    tips
-    exit 0
-fi
-
 # Find the start_day of the current week
 start_day=$(date -d "mon" +%y%m%d)
 
@@ -48,14 +43,32 @@ sunday="Sunday"
 woche_array=($montag $dienstag $mittwoch $donnerstag $freitag $samstag $sonntag)
 week_array=($monday $tuesday $wednesday $thursday $friday $saturday $sunday)
 
-if [ "$1" = "create" ]; then
-    # Iterate into array to add the days of the week with an empty line below to create the file
-    for i in "${woche_array[@]}"; do
-        printf "# %s\n\n" "$i" >> "$start_day.md"
-    done
-    echo "The file $start_day.md has been created."
-    exit 0
-fi
+case $1 in
+    create)
+        if [ -e "$start_day.md" ]; then
+            echo "The file $start_day.md already exists."
+            exit 1
+        fi
+        for i in "${woche_array[@]}"; do
+            printf "# %s\n\n" "$i" >> "$start_day.md"
+        done
+        echo "The file $start_day.md has been created."
+        exit 0
+        ;;
+    show)
+        if [ ! -e "$start_day.md" ]; then
+            echo "The file $start_day.md does not exist."
+            exit 1
+        fi
+        printf "Week starts in $start_day.\n\n"
+        cat "$start_day.md"
+        exit 0
+        ;;
+    help)
+        tips
+        exit 0
+        ;;
+esac
 
 case $1 in
     mon)

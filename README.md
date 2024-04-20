@@ -41,9 +41,9 @@ To obtain instructions use help.
 ```
 
 ### Tips
-
-- You can change de path where the files are created changing the path variable in `woche.sh` file.
-- If you want to use the name of the days in English, change the woche_array for week_array in line 53.
+- To change de path where the files are created changing the path variable in `woche.sh` file.
+- To change the format of date in the Markdown file change start_day in line 21.
+- To use the name of the days in English, change the woche_array for week_array in line 53.
 
 ## Testing
 

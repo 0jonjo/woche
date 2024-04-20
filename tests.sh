@@ -60,4 +60,4 @@ if [[ "$output" == *"Week starts in"* ]]; then
 else
     echo "Test 'show' command: FAILED"
 fi
-
+check_test_result

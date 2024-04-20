@@ -24,8 +24,7 @@ jobs:
       - uses: actions/checkout@v3
 
       # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Starting tests
-
-      - name: Tests
-        run: bash tests.sh
+      - name: Starting tests
+        run: | 
+              echo Starting tests
+              bash tests.sh

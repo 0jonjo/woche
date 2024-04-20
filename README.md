@@ -34,7 +34,16 @@ Replace `<day>` with the day of the week (in German: mon, die, mit, don, frei, s
 Output:
 Task 'Test' added to Montag.
 ```
-3. To obtain instructions use help.
+
+3. Show the tasks of the current week.
+
+```bash
+./woche.sh show
+```
+
+Returns the start day of the week and prints the Markdown file with the tasks.
+
+4. To obtain instructions use help.
 
 ```bash
 ./woche.sh help

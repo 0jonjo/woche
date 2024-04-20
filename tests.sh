@@ -36,6 +36,14 @@ else
 fi
 check_test_result
 
+# Test the 'create' command when the file already exists
+output=$("$woche_script_path" create)
+if [[ "$output" == *"The file"*"already exists."* ]]; then
+    echo "Test 'create' command when the file already exists: PASSED"
+else
+    echo "Test 'create' command when the file already exists: FAILED"
+fi
+
 # Test add task to a day command
 output=$("$woche_script_path" mon "Test task")
 if [[ "$output" == *"Task 'Test task' added to"* ]]; then
@@ -45,3 +53,11 @@ else
 fi
 check_test_result
 
+# Test show command
+output=$("$woche_script_path" show)
+if [[ "$output" == *"Week starts in"* ]]; then
+    echo "Test 'show' command: PASSED"
+else
+    echo "Test 'show' command: FAILED"
+fi
+check_test_result

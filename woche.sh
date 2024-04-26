@@ -1,24 +1,5 @@
 #!/bin/bash
 
-tips() {
-    echo "tips: woche.sh"
-    echo "create: a new markdown file for the current week"
-    echo "mon, die, mit, don, fre, sam, son: add a task to the day of the week (in German)"
-}
-
-# Check the number of arguments
-if [ "$#" -gt 2 ]; then
-    tips
-    exit 1
-fi
-
-# Find the start_day (monday) of the current week, not the next week
-start_day=$(date -d "last monday" "+%y%m%d")
-# If monday is  today, set the current monday
-if [ "$(date "+%A")" == "Monday" ]; then
-    start_day=$(date "+%y%m%d")
-fi
-
 # The path to create and edit the file
 path="/home/$(whoami)/"
 cd "$path"
@@ -43,7 +24,6 @@ fri="Friday"
 sat="Saturday"
 sun="Sunday"
 
-# Array of the days of the week
 woche_array=($mon $die $mit $don $fre $sam $son)
 week_array=($mond $tue $wed $thu $fri $sat $sun)
 
@@ -52,6 +32,25 @@ options=("create" "show" "help")
 
 # Create an array that is options + woche_array name of variables as strings
 options_to_check=("${options[@]}" "${woche_array_string[@]}")
+
+tips() {
+    echo "tips: woche.sh"
+    echo "create: a new markdown file for the current week"
+    echo "${woche_array_string[@]}: to add a task to the day of the week."
+}
+
+# Check the number of arguments
+if [ "$#" -gt 2 ]; then
+    tips
+    exit 1
+fi
+
+# Find the start_day (monday) of the current week, not the next week
+start_day=$(date -d "last monday" "+%y%m%d")
+
+if [ "$(date "+%A")" == "Monday" ]; then
+    start_day=$(date "+%y%m%d")
+fi
 
 # Check if $1 is in the options to check
 if [[ ! " ${options_to_check[@]} " =~ " $1 " ]]; then

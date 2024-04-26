@@ -33,7 +33,7 @@ Replace <day> with the day of the week (in German: mon, die, mit, don, frei, sam
 
 This command prints the Markdown file with the tasks for the entire week.
 
-4. Access instructions:
+**4. Access instructions:**
 
 ```bash
 ./woche.sh help

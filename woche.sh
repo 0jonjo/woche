@@ -1,20 +1,5 @@
 #!/bin/bash
 
-tips() {
-    echo "tips: woche.sh"
-    echo "create: a new markdown file for the current week"
-    echo "mon, die, mit, don, fre, sam, son: add a task to the day of the week (in German)"
-}
-
-# Check the number of arguments
-if [ "$#" -gt 2 ]; then
-    tips
-    exit 1
-fi
-
-# Find the start_day of the current week
-start_day=$(date -d "mon" +%y%m%d)
-
 # The path to create and edit the file
 path="/home/$(whoami)/"
 cd "$path"
@@ -23,25 +8,55 @@ day=""
 task="$2"
 
 # Days of the week in German and English
-montag="Montag"
-dienstag="Dienstag"
-mittwoch="Mittwoch"
-donnerstag="Donnerstag"
-freitag="Freitag"
-samstag="Samstag"
-sonntag="Sonntag"
+mon="Montag"
+die="Dienstag"
+mit="Mittwoch"
+don="Donnerstag"
+fre="Freitag"
+sam="Samstag"
+son="Sonntag"
 
-monday="Monday"
-tuesday="Tuesday"
-wednesday="Wednesday"
-thursday="Thursday"
-friday="Friday"
-saturday="Saturday"
-sunday="Sunday"
+mond="Monday"
+tue="Tuesday"
+wed="Wednesday"
+thu="Thursday"
+fri="Friday"
+sat="Saturday"
+sun="Sunday"
 
-# Array of the days of the week
-woche_array=($montag $dienstag $mittwoch $donnerstag $freitag $samstag $sonntag)
-week_array=($monday $tuesday $wednesday $thursday $friday $saturday $sunday)
+woche_array=($mon $die $mit $don $fre $sam $son)
+week_array=($mond $tue $wed $thu $fri $sat $sun)
+
+woche_array_string=("mon" "die" "mit" "don" "fre" "sam" "son")
+options=("create" "show" "help")
+
+# Create an array that is options + woche_array name of variables as strings
+options_to_check=("${options[@]}" "${woche_array_string[@]}")
+
+tips() {
+    echo "tips: woche.sh"
+    echo "create: a new markdown file for the current week"
+    echo "${woche_array_string[@]}: to add a task to the day of the week."
+}
+
+# Check the number of arguments
+if [ "$#" -gt 2 ]; then
+    tips
+    exit 1
+fi
+
+# Find the start_day (monday) of the current week, not the next week
+start_day=$(date -d "last monday" "+%y%m%d")
+
+if [ "$(date "+%A")" == "Monday" ]; then
+    start_day=$(date "+%y%m%d")
+fi
+
+# Check if $1 is in the options to check
+if [[ ! " ${options_to_check[@]} " =~ " $1 " ]]; then
+    tips
+    exit 1
+fi
 
 case $1 in
     create)
@@ -68,36 +83,11 @@ case $1 in
         tips
         exit 0
         ;;
-esac
-
-case $1 in
-    mon)
-        day=$montag
-        ;;
-    die)
-        day=$dienstag
-        ;;
-    mit)
-        day=$mittwoch
-        ;;
-    don)
-        day=$donnerstag
-        ;;
-    fre)
-        day=$freitag
-        ;;
-    sam)
-        day=$samstag
-        ;;
-    son)
-        day=$sonntag
-        ;;
     *)
-        tips
-        exit 1
+        day=$(eval echo \$$1)
+        sed -i "/$day/ a\\- $task" "$start_day.md"
+        echo "Task '$task' added to $day."
+        exit 0
         ;;
 esac
 
-sed -i "/$day/ a\\- $task" "$start_day.md"
-echo "Task '$task' added to $day."
-exit 0

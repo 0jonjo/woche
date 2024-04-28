@@ -1,7 +1,13 @@
 #!/bin/bash
 
 # Path to the woche.sh script
+source $(dirname "$0")/functions.sh
+source $(dirname "$0")/variables.sh
+
 woche_script_path="./woche.sh"
+
+start_day_of_week
+echo start_day: $start_day
 
 check_test_result() {
     if [[ "$output" == *"FAILED"* ]]; then
@@ -9,12 +15,20 @@ check_test_result() {
     fi
 }
 
-# Test with more than 2 arguments
-output=$("$woche_script_path" mon "Test task" "Extra argument")
+delete_file() {
+    cd "$path"
+    rm -f "$start_day.md"
+    cd -
+}
+
+delete_file
+
+# Test with more than 3 arguments
+output=$("$woche_script_path" mon "Test task" "Argument" "Extra argument")
 if [[ "$output" == *"tips: woche.sh"* ]]; then
-    echo "Test 'more than 2 arguments' command: PASSED"
+    echo "Test 'more than 3 arguments' command: PASSED"
 else
-    echo "Test 'more than 2 arguments' command: FAILED"
+    echo "Test 'more than 3 arguments' command: FAILED"
 fi
 check_test_result
 
@@ -62,6 +76,14 @@ else
 fi
 check_test_result
 
+# Test edit command
+output=$("$woche_script_path" edit 2 "New task")
+if [[ "$output" == *"Line 2 edited."* ]]; then
+    echo "Test 'edit' command: PASSED"
+else
+    echo "Test 'edit' command: FAILED"
+fi
+
 # Test show command
 output=$("$woche_script_path" show)
 if [[ "$output" == *"Week starts in"* ]]; then
@@ -70,3 +92,13 @@ else
     echo "Test 'show' command: FAILED"
 fi
 check_test_result
+
+# Test delete command
+output=$("$woche_script_path" delete 2)
+if [[ "$output" == *"Line 2 deleted."* ]]; then
+    echo "Test 'delete' command: PASSED"
+else
+    echo "Test 'delete' command: FAILED"
+fi
+
+delete_file

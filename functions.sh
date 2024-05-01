@@ -11,7 +11,7 @@ tips() {
 start_day_of_week() {
     start_day=$(date -d "last monday" "+%y%m%d")
 
-    if [ "$(date "+%A")" == "Monday" ]; then
+    if [ "$(date "+%u")" == 1 ]; then
         start_day=$(date "+%y%m%d")
     fi
 }

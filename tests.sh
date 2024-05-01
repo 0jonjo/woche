@@ -7,7 +7,6 @@ source $(dirname "$0")/variables.sh
 woche_script_path="./woche.sh"
 
 start_day_of_week
-echo start_day: $start_day
 
 check_test_result() {
     if [[ "$output" == *"FAILED"* ]]; then

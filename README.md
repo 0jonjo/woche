@@ -1,6 +1,6 @@
 # Woche
 
-Woche is a collection of Bash scripts that assist in managing weekly tasks. It enables the creation of a new Markdown file for the current week and the addition of tasks to specific days. Woche, meaning 'week' in German, uses German day names (Montag, Dienstag, Mittwoch, Donnerstag, Freitag, Samstag, and Sonntag) for educational purposes. You can choose the name of the days to English.
+Woche is a collection of Bash scripts that assist in managing weekly tasks. It enables the creation of a new Markdown file for the current week and the addition of tasks to specific days. Woche, meaning 'week' in German, uses German day names (Montag, Dienstag, Mittwoch, Donnerstag, Freitag, Samstag, and Sonntag) for educational purposes. You can choose between options with the names of the days in English or German.
 
 ## Features
 

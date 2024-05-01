@@ -41,15 +41,17 @@ create_file() {
     for i in "${woche_array[@]}"; do
         printf "# %s\n\n" "$i" >> "$start_day.md"
     done
+    echo "The file $start_day.md has been created."
 }
 
 delete_line() {
     sed -i "${task}d" "$start_day.md"
+    echo "Line ${task} deleted."
 }
 
 edit_line() {
-    # Replace the line with the new task in $3 variabled
     sed -i "${task}s/.*/- $new_task/" "$start_day.md"
+    echo "Line ${task} edited."
 }
 
 show_file() {

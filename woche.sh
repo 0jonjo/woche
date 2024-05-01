@@ -28,21 +28,18 @@ case $1 in
     create)
         file_already_exists
         create_file
-        echo "The file $start_day.md has been created."
         exit 0
         ;;
     delete)
         file_exists
         line_exists
         delete_line
-        echo "Line ${task} deleted."
         exit 0
         ;;
     edit)
         file_exists
         line_exists
         edit_line
-        echo "Line ${task} edited."
         exit 0
         ;;
     show)

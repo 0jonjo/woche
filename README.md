@@ -1,6 +1,6 @@
 # Woche
 
-Woche is a collection of Bash scripts that assist in managing weekly tasks. It enables the creation of a new Markdown file for the current week and the addition of tasks to specific days. Woche, meaning 'week' in German, uses German day names (Montag, Dienstag, Mittwoch, Donnerstag, Freitag, Samstag, and Sonntag) for educational purposes. You can choose between options with the names of the days in English or German.
+Woche is a collection of Bash scripts that assist in managing weekly tasks. It enables the creation of a new Markdown file for the current week and the addition of tasks to specific days. Woche, meaning 'week' in German. You can choose between options with the names of the days in English or German.
 
 ## Features
 
@@ -10,22 +10,23 @@ Woche is a collection of Bash scripts that assist in managing weekly tasks. It e
 
 ## Usage
 
-1. **Create a new Markdown file for the current week (starting on Monday):**
+**Create a new Markdown file for the current week (starting on Monday):**
 
 ```bash
 ./woche.sh create
 ```
+
 This command creates a file using the YYMMDD format.
 
-2. **Add a task to a specific day:**
+**Add a task to a specific day:**
 
 ```bash
 ./woche.sh <day> "<task>"
 ```
 
-Replace <day> with the day of the week (in German: mon, die, mit, don, frei, sam, son) and <task> with the task description.
+Replace <day> with the day of the week and <task> with the task description. The days in German are: mon, die, mit, don, frei, sam and son, in English: mond, tue, wed, thu, fri, sat and sun.
 
-3. **Display the tasks of the current week:**
+**Display the tasks of the current week:**
 
 ```bash
 ./woche.sh show
@@ -33,7 +34,7 @@ Replace <day> with the day of the week (in German: mon, die, mit, don, frei, sam
 
 This command prints the Markdown file with the tasks for the entire week.
 
-4. **Edit a task of the current week:**
+**Edit a task of the current week:**
 
 ```bash
 ./woche.sh edit 9 "That task"
@@ -41,7 +42,7 @@ This command prints the Markdown file with the tasks for the entire week.
 
 This command edit the line 9 of Markdown file with the tasks.
 
-5. **Delete a task of the current week:**
+**Delete a task of the current week:**
 
 ```bash
 ./woche.sh delete 3
@@ -49,16 +50,11 @@ This command edit the line 9 of Markdown file with the tasks.
 
 This command edit the line 3 of Markdown file.
 
-6. **Access instructions:**
+**Access instructions:**
 
 ```bash
 ./woche.sh help
 ```
-
-## Customization Tips
-- Change the file creation path by modifying the path variable in the variables.sh file.
-- Switch to English day names by replacing woche_array with week_array in the same file.
-- Alter the date format of the Markdown file by adjusting the start_day_of_week method in functions.sh.
 
 ## Testing
 
@@ -69,6 +65,28 @@ To run the tests:
 ```bash
 ./test.sh
 ```
+
+## Docker
+
+To use the dockerized version of Woche, follow these instructions:
+
+```bash
+# Build the image
+docker build -t woche-app .
+
+# Run the container
+docker run -it woche-app
+```
+
+## Customization Tips
+
+- Change the file creation path by modifying the path variable in the variables.sh file.
+- Switch to German day names by replacing week_array with woche_array in the same file.
+- Alter the date format of the Markdown file by adjusting the start_day_of_week method in functions.sh.
+- Use dockerized version if not in Ubuntu/Debian like system operation.
+
 ---
+
 ## License
+
 This project is licensed under the GNU License. See the [LICENSE](LICENSE) file for details.

@@ -1,8 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Path to the woche.sh script
-source $(dirname "$0")/functions.sh
-source $(dirname "$0")/variables.sh
+source functions.sh
+source variables.sh
 
 woche_script_path="./woche.sh"
 

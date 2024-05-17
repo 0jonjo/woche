@@ -66,7 +66,7 @@ else
 fi
 
 # Test add task to a day command
-output=$("$woche_script_path" mon "Test task")
+output=$("$woche_script_path" mond "Test task")
 if [[ "$output" == *"Task 'Test task' added to"* ]]; then
     echo "Test 'add task to a day' command: PASSED"
 else

@@ -1,8 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Path: woche.sh
-source $(dirname "$0")/functions.sh
-source $(dirname "$0")/variables.sh
+source functions.sh
+source variables.sh
 
 cd "$path"
 
@@ -19,7 +18,7 @@ fi
 
 # Check if $1 is in the options to check
 if [[ ! " ${options_to_check[@]} " =~ " $1 " ]]; then
-    echo "Invalid command."
+    echo "Error: Invalid command."
     tips
     exit 1
 fi

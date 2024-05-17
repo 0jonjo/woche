@@ -1,11 +1,9 @@
-#!/bin/bash
-
-#Path: functions.sh
+#!/usr/bin/env bash
 
 tips() {
     echo "tips: woche.sh"
     echo "create: a new markdown file for the current week"
-    echo "${woche_array_string[@]}: to add a task to the day of the week."
+    echo "${week_array_string[@]}: to add a task to the day of the week."
 }
 
 start_day_of_week() {
@@ -18,27 +16,27 @@ start_day_of_week() {
 
 file_exists() {
     if [ ! -e "$start_day.md" ]; then
-        echo "The file $start_day.md does not exist."
+        echo "Error: The file $start_day.md does not exist."
         exit 1
     fi
 }
 
 file_already_exists() {
     if [ -e "$start_day.md" ]; then
-        echo "The file $start_day.md already exists."
+        echo "Error: The file $start_day.md already exists."
         exit 1
     fi
 }
 
 line_exists() {
     if [ -z "$(sed -n "${task}p" "$start_day.md")" ]; then
-        echo "Line $task does not exist."
+        echo "Error: Line $task does not exist."
         exit 1
     fi
 }
 
 create_file() {
-    for i in "${woche_array[@]}"; do
+    for i in "${week_array[@]}"; do
         printf "# %s\n\n" "$i" >> "$start_day.md"
     done
     echo "The file $start_day.md has been created."

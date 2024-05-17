@@ -1,8 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Path to the woche.sh script
-source $(dirname "$0")/functions.sh
-source $(dirname "$0")/variables.sh
+source functions.sh
+source variables.sh
 
 woche_script_path="./woche.sh"
 
@@ -23,7 +22,7 @@ delete_file() {
 delete_file
 
 # Test with more than 3 arguments
-output=$("$woche_script_path" mon "Test task" "Argument" "Extra argument")
+output=$("$woche_script_path" mont "Test task" "Argument" "Extra argument")
 if [[ "$output" == *"tips: woche.sh"* ]]; then
     echo "Test 'more than 3 arguments' command: PASSED"
 else
@@ -67,7 +66,7 @@ else
 fi
 
 # Test add task to a day command
-output=$("$woche_script_path" mon "Test task")
+output=$("$woche_script_path" mond "Test task")
 if [[ "$output" == *"Task 'Test task' added to"* ]]; then
     echo "Test 'add task to a day' command: PASSED"
 else

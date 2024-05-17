@@ -22,7 +22,7 @@ delete_file() {
 delete_file
 
 # Test with more than 3 arguments
-output=$("$woche_script_path" mon "Test task" "Argument" "Extra argument")
+output=$("$woche_script_path" mont "Test task" "Argument" "Extra argument")
 if [[ "$output" == *"tips: woche.sh"* ]]; then
     echo "Test 'more than 3 arguments' command: PASSED"
 else

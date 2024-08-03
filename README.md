@@ -1,11 +1,12 @@
 # Woche
 
-Woche is a collection of Bash scripts that assist in managing weekly tasks. It enables the creation of a new Markdown file for the current week and the addition of tasks to specific days. Woche, meaning 'week' in German. You can choose between options with the names of the days in English or German.
+Woche is a program that assists in managing weekly tasks. It uses Bash scripts to enable the creation of a new Markdown file for the current week and the addition of tasks to specific days. It can navigate in the tasks of another weeks too. The word "Woche" means 'week' in German. You can choose between options with the names of the days in English or German.
 
 ## Features
 
 - Generates a new Markdown file for the current week, including headers for each day.
 - Allows the addition, editing and delete of tasks to a specific day of the week or line of the file.
+- Lists and shows the tasks of the different weeks.
 - Provides usage tips.
 
 ## Usage
@@ -49,6 +50,18 @@ This command edit the line 9 of Markdown file with the tasks.
 ```
 
 This command edit the line 3 of Markdown file.
+
+**List the files of the different weeks:**
+
+```bash
+./woche.sh all
+```
+
+***Show the tasks of a specific week:**
+
+```bash
+./woche.sh show 210829
+```
 
 **Access instructions:**
 

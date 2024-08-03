@@ -25,7 +25,7 @@ This command creates a file using the YYMMDD format.
 ./woche.sh <day> "<task>"
 ```
 
-Replace <day> with the day of the week and <task> with the task description. The days in German are: mon, die, mit, don, frei, sam and son, in English: mond, tue, wed, thu, fri, sat and sun.
+Replace <day> with the day of the week and <task> with the task description. The days in German are: mont, die, mit, don, frei, sam and son, in English: mon, tue, wed, thu, fri, sat and sun.
 
 **Display the tasks of the current week:**
 

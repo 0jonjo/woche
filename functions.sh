@@ -11,24 +11,24 @@ tips() {
     echo "all: show all markdown files in the current directory"
 }
 
-start_day_of_week() {
-    start_day=$(date -d "last monday" "+%y%m%d")
+current_week() {
+    current_week=$(date -d "last monday" "+%y%m%d")
 
     if [ "$(date "+%u")" == 1 ]; then
-        start_day=$(date "+%y%m%d")
+        current_week=$(date "+%y%m%d")
     fi
 }
 
 file_exists() {
     if [ ! -e "$file.md" ]; then
-        echo "Error: The file $$file.md does not exist."
+        echo "Error: The file $file.md does not exist."
         exit 1
     fi
 }
 
 file_already_exists() {
     if [ -e "$file.md" ]; then
-        echo "Error: The file $$file.md already exists."
+        echo "Error: The file $file.md already exists."
         exit 1
     fi
 }

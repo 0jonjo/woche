@@ -5,7 +5,8 @@ source variables.sh
 
 woche_script_path="./woche.sh"
 
-start_day_of_week
+current_week
+file=$current_week
 
 check_test_result() {
     if [[ "$output" == *"FAILED"* ]]; then
@@ -15,7 +16,7 @@ check_test_result() {
 
 delete_file() {
     cd "$path_to_files" > /dev/null
-    rm -f "$start_day.md"
+    rm -f "$current_week.md"
     cd - > /dev/null
 }
 
@@ -95,8 +96,8 @@ check_test_result
 
 ## Check if the file is created on last test
 cd "$path_to_files" > /dev/null
-if [ ! -e "$start_day.md" ]; then
-    echo "Error: The file $start_day.md does not exist."
+if [ ! -e "$file.md" ]; then
+    echo "Error: The file $file.md does not exist."
     exit 1
 fi
 cd - > /dev/null
@@ -121,7 +122,7 @@ check_test_result
 
 ## Check if the task is added on last test
 cd "$path_to_files" > /dev/null
-if [ -z "$(sed -n "/# $mon/ p" "$start_day.md")" ]; then
+if [ -z "$(sed -n "/# $mon/ p" "$file.md")" ]; then
     echo "Error: Task has not been added."
     exit 1
 fi
@@ -137,7 +138,7 @@ fi
 
 ## Check if the task is edited on last test
 cd "$path_to_files" > /dev/null
-if [ -z "$(sed -n "2 p" "$start_day.md" | grep "New task")" ]; then
+if [ -z "$(sed -n "2 p" "$file.md" | grep "New task")" ]; then
     echo "Error: Task has not been edited."
     exit 1
 fi

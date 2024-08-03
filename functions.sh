@@ -4,6 +4,10 @@ tips() {
     echo "tips: woche.sh"
     echo "create: a new markdown file for the current week"
     echo "${week_array_string[@]}: to add a task to the day of the week."
+    echo "show: show the tasks for the current week"
+    echo "delete X: delete a task from the current week - X is the line number"
+    echo "edit X: edit a task from the current week - X is the line number"
+    echo "all: show all markdown files in the current directory"
 }
 
 start_day_of_week() {
@@ -12,6 +16,8 @@ start_day_of_week() {
     if [ "$(date "+%u")" == 1 ]; then
         start_day=$(date "+%y%m%d")
     fi
+
+    start_day_formatted=$(date -d "$start_day" "+%d/%m/%Y")
 }
 
 file_exists() {
@@ -54,4 +60,9 @@ edit_line() {
 
 show_file() {
     cat -n "$start_day.md"
+}
+
+show_all_files() {
+    echo "All markdown files in $path_to_files:"
+    ls -1 *.md
 }

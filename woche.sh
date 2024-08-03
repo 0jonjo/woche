@@ -3,7 +3,7 @@
 source functions.sh
 source variables.sh
 
-cd "$path"
+cd "$path_to_files" > /dev/null
 
 day=""
 task="$2"
@@ -43,8 +43,12 @@ case $1 in
         ;;
     show)
         file_exists
-        printf "Week starts in $start_day.\n\n"
+        printf "Week starts on $start_day_formatted.\n\n"
         show_file
+        exit 0
+        ;;
+    all)
+        show_all_files
         exit 0
         ;;
     help)

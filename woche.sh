@@ -8,7 +8,8 @@ cd "$path_to_files" > /dev/null
 day=""
 task="$2"
 new_task="$3"
-start_day_of_week
+current_week
+file=$current_week
 
 # Check the number of arguments
 if [ "$#" -gt 3 ]; then
@@ -23,13 +24,6 @@ if [[ ! " ${options_to_check[@]} " =~ " $1 " ]]; then
     exit 1
 fi
 
-# Set file variable to show option
-if [ "$task" ]; then
-    file=$task
-else
-    file=$start_day
-fi
-
 case $1 in
     create)
         file_already_exists
@@ -37,22 +31,23 @@ case $1 in
         exit 0
         ;;
     delete)
-        file=$start_day
         file_exists
         line_exists
         delete_line
         exit 0
         ;;
     edit)
-        file=$start_day
         file_exists
         line_exists
         edit_line
         exit 0
         ;;
     show)
-        file_exists $file
-        show_file $file
+        if [ "$task" ]; then
+            file=$task
+        fi
+        file_exists
+        show_file
         exit 0
         ;;
     all)
@@ -64,7 +59,6 @@ case $1 in
         exit 0
         ;;
     *)
-        file=$start_day
         file_exists
         day=$(eval echo \$$1)
         sed -i "/# $day/ a\\- $task" "$file.md"

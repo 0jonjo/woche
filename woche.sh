@@ -3,7 +3,7 @@
 source functions.sh
 source variables.sh
 
-cd "$path"
+cd "$path_to_files" > /dev/null
 
 day=""
 task="$2"
@@ -23,6 +23,13 @@ if [[ ! " ${options_to_check[@]} " =~ " $1 " ]]; then
     exit 1
 fi
 
+# Set file variable to show option
+if [ "$task" ]; then
+    file=$task
+else
+    file=$start_day
+fi
+
 case $1 in
     create)
         file_already_exists
@@ -30,21 +37,26 @@ case $1 in
         exit 0
         ;;
     delete)
+        file=$start_day
         file_exists
         line_exists
         delete_line
         exit 0
         ;;
     edit)
+        file=$start_day
         file_exists
         line_exists
         edit_line
         exit 0
         ;;
     show)
-        file_exists
-        printf "Week starts in $start_day.\n\n"
-        show_file
+        file_exists $file
+        show_file $file
+        exit 0
+        ;;
+    all)
+        show_all_files
         exit 0
         ;;
     help)
@@ -52,9 +64,10 @@ case $1 in
         exit 0
         ;;
     *)
+        file=$start_day
         file_exists
         day=$(eval echo \$$1)
-        sed -i "/# $day/ a\\- $task" "$start_day.md"
+        sed -i "/# $day/ a\\- $task" "$file.md"
         echo "Task '$task' added to $day."
         exit 0
         ;;

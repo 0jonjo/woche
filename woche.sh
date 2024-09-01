@@ -61,7 +61,8 @@ case $1 in
     *)
         file_exists
         day=$(eval echo \$$1)
-        sed -i "/# $day/ a\\- $task" "$file.md"
+        escaped_task=$(sed 's/[\/&]/\\&/g' <<< "$task")
+        sed -i "/# $day/ a\\- $escaped_task" "$file.md"
         echo "Task '$task' added to $day."
         exit 0
         ;;

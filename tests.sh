@@ -128,8 +128,17 @@ if [ -z "$(sed -n "/# $mon/ p" "$file.md")" ]; then
 fi
 cd - > /dev/null
 
-# Test edit command
-output=$("$woche_script_path" edit 2 "New task")
+# Test add task with punctituation to a day command
+output=$("$woche_script_path" mon "Test task with punctuation: ;,!@#$%^&*()_+")
+if [[ "$output" == *"Task 'Test task with punctuation: ;,!@#$%^&*()_+' added to"* ]]; then
+    echo "Test 'add task to a day' command: PASSED"
+else
+    echo "Test 'add task to a day' command: FAILED"
+fi
+check_test_result
+
+# Test edit command with punctituation
+output=$("$woche_script_path" edit 2 "New task ,.!@")
 if [[ "$output" == *"Line 2 edited."* ]]; then
     echo "Test 'edit' command: PASSED"
 else
@@ -138,7 +147,7 @@ fi
 
 ## Check if the task is edited on last test
 cd "$path_to_files" > /dev/null
-if [ -z "$(sed -n "2 p" "$file.md" | grep "New task")" ]; then
+if [ -z "$(sed -n "2 p" "$file.md" | grep "New task ,.!@")" ]; then
     echo "Error: Task has not been edited."
     exit 1
 fi

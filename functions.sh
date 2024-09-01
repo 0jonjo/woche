@@ -53,7 +53,8 @@ delete_line() {
 }
 
 edit_line() {
-    sed -i "${task}s/.*/- $new_task/" "$file.md"
+    escaped_task=$(sed 's/[\/&]/\\&/g' <<< "$new_task")
+    sed -i "${task}s/.*/- $escaped_task/" "$file.md"
     echo "Line ${task} edited."
 }
 

@@ -117,6 +117,20 @@ if [ -z "$(sed -n "/# $mon/ p" "$file.md")" ]; then
 fi
 cd - > /dev/null || exit
 
+# Test the last command
+cd "$path_to_files" > /dev/null || exit
+last_week=$(date -d "$current_week - 7 days" "+%y%m%d")
+cp "$file.md" "$last_week.md"
+cd - > /dev/null || exit
+
+output=$("$woche_script_path" show last)
+if [[ "$output" == *"Week starts on"* ]]; then
+    echo "Test 'last week' command: PASSED"
+else
+    echo "Test 'last week' command: FAILED"
+fi
+check_test_result
+
 # Test the all command
 output=$("$woche_script_path" all)
 if [[ "$output" == "All markdown files in $path_to_files:"* ]]; then

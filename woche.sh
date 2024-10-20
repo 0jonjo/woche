@@ -9,6 +9,7 @@ day=""
 task="$2"
 new_task="$3"
 current_week
+last_week
 file=$current_week
 
 # Check the number of arguments
@@ -18,7 +19,7 @@ if [ "$#" -gt 3 ]; then
 fi
 
 # Check if $1 is in the options to check
-if [[ ! " ${options_to_check[@]} " =~ " $1 " ]]; then
+if [[ ! " ${options_to_check[@]} " =~ $1 ]]; then
     echo "Error: Invalid command."
     tips
     exit 1
@@ -45,6 +46,9 @@ case $1 in
     show)
         if [ "$task" ]; then
             file=$task
+        fi
+        if [ "$task" = "last" ]; then
+            file=$last_week
         fi
         file_exists
         show_file

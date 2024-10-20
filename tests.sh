@@ -5,6 +5,13 @@ source variables.sh
 
 woche_script_path="./woche.sh"
 
+# Store original path_to_files in variables.sh
+original_path_to_files="$path_to_files"
+
+# Ensure path_to_files is set to the test directory in variables.sh
+sed -i 's|^path_to_files=.*|path_to_files="/tmp/"|' variables.sh
+source variables.sh
+
 current_week
 file=$current_week
 
@@ -15,9 +22,9 @@ check_test_result() {
 }
 
 delete_file() {
-    cd "$path_to_files" > /dev/null
+    cd "$path_to_files" > /dev/null || exit
     rm -f "$current_week.md"
-    cd - > /dev/null
+    cd - > /dev/null || exit
 }
 
 delete_file
@@ -95,12 +102,20 @@ fi
 check_test_result
 
 ## Check if the file is created on last test
-cd "$path_to_files" > /dev/null
+cd "$path_to_files" > /dev/null || exit
 if [ ! -e "$file.md" ]; then
     echo "Error: The file $file.md does not exist."
     exit 1
 fi
-cd - > /dev/null
+cd - > /dev/null || exit
+
+# Check if the # Monday was added to the file
+cd "$path_to_files" > /dev/null || exit
+if [ -z "$(sed -n "/# $mon/ p" "$file.md")" ]; then
+    echo "Error: The day of the week is not written in the file."
+    exit 1
+fi
+cd - > /dev/null || exit
 
 # Test the all command
 output=$("$woche_script_path" all)
@@ -121,12 +136,12 @@ fi
 check_test_result
 
 ## Check if the task is added on last test
-cd "$path_to_files" > /dev/null
+cd "$path_to_files" > /dev/null || exit
 if [ -z "$(sed -n "/# $mon/ p" "$file.md")" ]; then
     echo "Error: Task has not been added."
     exit 1
 fi
-cd - > /dev/null
+cd - > /dev/null || exit
 
 # Test add task with punctituation to a day command
 output=$("$woche_script_path" mon "Test task with punctuation: ;,!@#$%^&*()_+")
@@ -146,12 +161,12 @@ else
 fi
 
 ## Check if the task is edited on last test
-cd "$path_to_files" > /dev/null
+cd "$path_to_files" > /dev/null || exit
 if [ -z "$(sed -n "2 p" "$file.md" | grep "New task ,.!@")" ]; then
     echo "Error: Task has not been edited."
     exit 1
 fi
-cd - > /dev/null
+cd - > /dev/null || exit
 
 # Test show command
 output=$("$woche_script_path" show)
@@ -172,3 +187,7 @@ fi
 check_test_result
 
 delete_file
+
+# Revert path_to_files to its original value in variables.sh
+sed -i "s|^path_to_files=.*|path_to_files=""$original_path_to_files""|" variables.sh
+source variables.sh

@@ -20,8 +20,8 @@ fri="Friday"
 sat="Saturday"
 sun="Sunday"
 
-woche_array=($mont $die $mit $don $fre $sam $son)
-week_array=($mon $tue $wed $thu $fri $sat $sun)
+woche_array=("$mont" "$die" "$mit" "$don" "$fre" "$sam" "$son")
+week_array=("$mon" "$tue" "$wed" "$thu" "$fri" "$sat" "$sun")
 
 woche_array_string=("mont" "die" "mit" "don" "fre" "sam" "son")
 week_array_string=("mon" "tue" "wed" "thu" "fri" "sat" "sun")

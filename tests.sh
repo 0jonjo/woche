@@ -176,7 +176,7 @@ fi
 
 ## Check if the task is edited on last test
 cd "$path_to_files" > /dev/null || exit
-if [ -z "$(sed -n "2 p" "$file.md" | grep "New task ,.!@")" ]; then
+if ! sed -n "2 p" "$file.md" | grep -q "New task ,.!@"; then
     echo "Error: Task has not been edited."
     exit 1
 fi

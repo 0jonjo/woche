@@ -1,4 +1,4 @@
-# Woche
+# Woche - v1.3.1
 
 Woche is a tool for managing weekly tasks using Bash scripts. It creates a new Markdown file for the current week and allows you to add tasks to specific days. "Woche" means 'week' in German, and you can choose between English or German day names.
 

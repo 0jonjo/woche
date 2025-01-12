@@ -3,14 +3,14 @@
 source functions.sh
 source variables.sh
 
-cd "$path_to_files" > /dev/null
+cd "$path_to_files" > /dev/null || exit
 
 day=""
 task="$2"
-new_task="$3"
+export new_task="$3"
 current_week
 last_week
-file=$current_week
+export file=$current_week
 
 # Check the number of arguments
 if [ "$#" -gt 3 ]; then
@@ -48,7 +48,7 @@ case $1 in
             file=$task
         fi
         if [ "$task" = "last" ]; then
-            file=$last_week
+            export file=$last_week
         fi
         file_exists
         show_file
@@ -64,7 +64,7 @@ case $1 in
         ;;
     *)
         file_exists
-        day=$(eval echo \$$1)
+        day=$(eval echo "\$$1")
         escaped_task=$(sed 's/[\/&]/\\&/g' <<< "$task")
         sed -i "/# $day/ a\\- $escaped_task" "$file.md"
         echo "Task '$task' added to $day."

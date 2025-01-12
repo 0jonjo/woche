@@ -3,7 +3,7 @@
 tips() {
     echo "tips: woche.sh"
     echo "create: a new markdown file for the current week"
-    echo "${week_array_string[@]}: to add a task to the day of the week."
+    echo "Use the day alias to add a task to the day of the week."
     echo "show: show the tasks for the current week"
     echo "show YYMMDD: show the tasks for the week starting on YYMMDD"
     echo "show last: show the tasks for last week"
@@ -22,6 +22,7 @@ current_week() {
 
 last_week() {
     last_week=$(date -d "$current_week - 7 days" "+%y%m%d")
+    export last_week
 }
 
 file_exists() {
@@ -86,5 +87,5 @@ show_file() {
 
 show_all_files() {
     echo "All markdown files in $path_to_files:"
-    ls -1 *.md
+    ls -1 ./*.md
 }

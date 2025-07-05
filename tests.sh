@@ -31,7 +31,7 @@ delete_file
 
 # Test with more than 3 arguments
 output=$("$woche_script_path" mon "Test task" "Argument" "Extra argument")
-if [[ "$output" == *"tips: woche.sh"* ]]; then
+if [[ "$output" == *"create: a new markdown file for the current week"* ]]; then
     echo "Test 'more than 3 arguments' command: PASSED"
 else
     echo "Test 'more than 3 arguments' command: FAILED"
@@ -67,7 +67,7 @@ check_test_result
 
 # Test invalid command
 output=$("$woche_script_path" invalid)
-if [[ "$output" == *"tips: woche.sh"* ]]; then
+if [[ "$output" == *"create: a new markdown file for the current week"* ]]; then
     echo "Test invalid command: PASSED"
 else
     echo "Test invalid command: FAILED"
@@ -76,7 +76,7 @@ check_test_result
 
 # Test the 'help' command
 output=$("$woche_script_path" help)
-if [[ "$output" == *"tips: woche.sh"* ]]; then
+if [[ "$output" == *"create: a new markdown file for the current week"* ]]; then
     echo "Test 'help' command: PASSED"
 else
     echo "Test 'help' command: FAILED"
@@ -167,8 +167,9 @@ fi
 check_test_result
 
 # Test edit command with punctituation
-output=$("$woche_script_path" edit 2 "New task ,.!@")
-if [[ "$output" == *"Line 2 edited."* ]]; then
+line_to_edit=$(grep -n "Test task with punctuation" "$path_to_files/$file.md" | cut -d: -f1)
+output=$("$woche_script_path" edit "$line_to_edit" "New task ,.!@")
+if [[ "$output" == *"Line $line_to_edit edited."* ]]; then
     echo "Test 'edit' command: PASSED"
 else
     echo "Test 'edit' command: FAILED"
@@ -176,29 +177,113 @@ fi
 
 ## Check if the task is edited on last test
 cd "$path_to_files" > /dev/null || exit
-if ! sed -n "2 p" "$file.md" | grep -q "New task ,.!@"; then
+if ! sed -n "${line_to_edit}p" "$file.md" | grep -q "New task ,.!@"; then
     echo "Error: Task has not been edited."
     exit 1
 fi
 cd - > /dev/null || exit
 
 # Test show command
+output=$("$woche_script_path" create)
+output=$("$woche_script_path" mon "Task one")
+output=$("$woche_script_path" mon "Task two")
+output=$("$woche_script_path" tue "Task three")
+
+line_one=$(grep -n "Task one" "$path_to_files/$file.md" | cut -d: -f1)
+line_two=$(grep -n "Task two" "$path_to_files/$file.md" | cut -d: -f1)
+line_three=$(grep -n "Task three" "$path_to_files/$file.md" | cut -d: -f1)
+
 output=$("$woche_script_path" show)
-if [[ "$output" == *"Week starts on"* ]]; then
+
+if [[ "$output" == *"Week starts on"* ]] && \
+   [[ "$output" == *"Task one"* ]] && \
+   [[ "$output" == *"Task two"* ]] && \
+   [[ "$output" == *"Task three"* ]]; then
     echo "Test 'show' command: PASSED"
 else
     echo "Test 'show' command: FAILED"
 fi
 check_test_result
 
-# Test delete command
-output=$("$woche_script_path" delete 2)
-if [[ "$output" == *"Line 2 deleted."* ]]; then
-    echo "Test 'delete' command: PASSED"
+# Test 'today' command
+output=$("$woche_script_path" today "Test task")
+if [[ "$output" == *"Task 'Test task' added to"* ]]; then
+    echo "Test 'today' command: PASSED"
 else
-    echo "Test 'delete' command: FAILED"
+    echo "Test 'today' command: FAILED"
 fi
 check_test_result
+
+# Test 'search' command
+output=$("$woche_script_path" create)
+output=$("$woche_script_path" mon "Searchable task")
+output=$("$woche_script_path" search "Searchable task")
+if [[ "$output" == *"Searchable task"* ]]; then
+    echo "Test 'search' command: PASSED"
+else
+    echo "Test 'search' command: FAILED"
+fi
+check_test_result
+
+# Test delete command with 'y' confirmation
+output=$("$woche_script_path" create)
+output=$("$woche_script_path" mon "Task to be deleted")
+line_to_delete=$(grep -n "Task to be deleted" "$path_to_files/$file.md" | cut -d: -f1)
+output=$(echo "y" | "$woche_script_path" delete "$line_to_delete")
+if [[ "$output" == *"Line $line_to_delete deleted."* ]]; then
+    echo "Test 'delete' command with 'y' confirmation: PASSED"
+else
+    echo "Test 'delete' command with 'y' confirmation: FAILED"
+fi
+check_test_result
+
+## Check if the task is deleted on last test
+cd "$path_to_files" > /dev/null || exit
+if grep -q "Task to be deleted" "$file.md"; then
+    echo "Error: Task has not been deleted."
+    exit 1
+fi
+cd - > /dev/null || exit
+
+# Test delete command with 'n' confirmation
+output=$("$woche_script_path" create)
+output=$("$woche_script_path" mon "Task not to be deleted")
+line_to_delete=$(grep -n "Task not to be deleted" "$path_to_files/$file.md" | cut -d: -f1)
+output=$(echo "n" | "$woche_script_path" delete "$line_to_delete")
+if [[ "$output" == *"Deletion cancelled."* ]]; then
+    echo "Test 'delete' command with 'n' confirmation: PASSED"
+else
+    echo "Test 'delete' command with 'n' confirmation: FAILED"
+fi
+check_test_result
+
+## Check if the task is not deleted on last test
+cd "$path_to_files" > /dev/null || exit
+if ! grep -q "Task not to be deleted" "$file.md"; then
+    echo "Error: Task has been deleted when it shouldn't have been."
+    exit 1
+fi
+cd - > /dev/null || exit
+
+# Test 'done' command
+output=$("$woche_script_path" create)
+output=$("$woche_script_path" mon "Task to be marked as done")
+line_to_mark_done=$(grep -n "Task to be marked as done" "$path_to_files/$file.md" | cut -d: -f1)
+output=$("$woche_script_path" done "$line_to_mark_done")
+if [[ "$output" == *"Task on line $line_to_mark_done marked as done."* ]]; then
+    echo "Test 'done' command: PASSED"
+else
+    echo "Test 'done' command: FAILED"
+fi
+check_test_result
+
+## Check if the task is marked as done on last test
+cd "$path_to_files" > /dev/null || exit
+if ! sed -n "${line_to_mark_done}p" "$file.md" | awk '/^- \[x\] Task to be marked as done/'; then
+    echo "Error: Task has not been marked as done."
+    exit 1
+fi
+cd - > /dev/null || exit
 
 delete_file
 

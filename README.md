@@ -1,89 +1,64 @@
-# Woche - v1.3.1
+# Woche - v1.4.0
 
-Woche is a tool for managing weekly tasks using Bash scripts. It creates a new Markdown file for the current week and allows you to add tasks to specific days. "Woche" means 'week' in German, and you can choose between English or German day names.
-
-![Screencast from 2024-10-20 15-15-38](https://github.com/user-attachments/assets/ef870bad-44c4-40ca-8c3d-a8313ea21d37)
+Woche is a command-line tool for managing weekly tasks using Bash scripts. It helps you create and organize tasks in Markdown files, with support for English and German day names.
 
 ## Features
 
-- Generates a new Markdown file for the current week with headers for each day.
-- Allows adding, editing, and deleting tasks for specific days or lines.
-- Lists and displays tasks from different weeks.
-- Provides usage tips.
+- Create weekly Markdown files.
+- Add, edit, delete, and mark tasks as complete.
+- View tasks by week, grouped by day with line numbers.
+- Search for tasks across all weeks.
+- Open weekly files in your preferred editor.
 
 ## Usage
 
-### Create a New Markdown File for the Current Week
+### Getting Started
 
 ```bash
 ./woche.sh create
-# The file 241014.md has been created
+# Creates a new Markdown file for the current week (e.g., 241014.md)
 ```
 
-This command creates a file using the YYMMDD format.
-
-### Add a Task to a Specific Day
+### Adding Tasks
 
 ```bash
-./woche.sh <day> "<task>"
+./woche.sh <day> "<task>"      # Add task to a specific day (e.g., mon, tue, mont, die)
+./woche.sh today "<task>"      # Add task to the current day
 ```
 
-Replace `<day>` with the day of the week and `<task>` with the task description. Days in English: mon, tue, wed, thu, fri, sat, sun. Days in German: mont, die, mit, don, frei, sam, son.
+### Viewing Tasks
 
 ```bash
-./woche.sh mon "Do something"
-# Do something was added to Monday.
+./woche.sh show                # Display tasks for the current week
+./woche.sh show last          # Display tasks for last week
+./woche.sh show <YYMMDD>      # Display tasks for a specific week (e.g., 210829)
+./woche.sh all                 # List all weekly Markdown files
 ```
 
-### Display Tasks of the Current Week
+### Managing Tasks
 
 ```bash
-./woche.sh show
+./woche.sh edit <line_number> "<new_task>"  # Edit a task by line number
+./woche.sh delete <line_number>             # Delete a task by line number (requires confirmation)
+./woche.sh done <line_number>               # Mark a task as complete
 ```
 
-### Edit a Task of the Current Week
+### Searching Tasks
 
 ```bash
-./woche.sh edit 9 "That task"
-# Line 9 edited.
+./woche.sh search "<keyword>"  # Search for a keyword in all weekly files
 ```
 
-### Delete a Task of the Current Week
+### Other Commands
 
 ```bash
-./woche.sh delete 3
-# Line 3 deleted.
-```
-
-### List Files of Different Weeks
-
-```bash
-./woche.sh all
-```
-
-### Display Tasks of Last Week
-
-```bash
-./woche.sh show last
-```
-
-### Show Tasks of a Specific Week
-
-```bash
-./woche.sh show 210829
-```
-
-### Access Instructions
-
-```bash
-./woche.sh help
+./woche.sh open                # Open the current week's file in $EDITOR
+./woche.sh help                # Display all commands and usage
 ```
 
 ## Testing
 
-The `test.sh` script tests the functionality of `woche.sh`, checking both correct and incorrect user inputs. This test is mandatory for pull requests to the main branch and should be included in the [GitHub Actions](https://github.com/0jonjo/woche/actions) pipeline for automated testing.
-
-To run the tests:
+To run the test suite:
 
 ```bash
 ./test.sh
@@ -91,22 +66,18 @@ To run the tests:
 
 ## Docker
 
-To use the Dockerized version of Woche:
+To use the Dockerized version:
 
 ```bash
-# Build the image
-docker build -t woche-app .
-
-# Run the container
-docker run -it woche-app
+docker build -t woche-app .  # Build the image
+docker run -it woche-app     # Run the container
 ```
 
-## Customization Tips
+## Customization
 
-- Change the file creation path by modifying the `path` variable in `variables.sh`.
-- Switch to German day names by replacing `week_array` with `woche_array` in `variables.sh`.
-- Alter the date format of the Markdown file by adjusting the `start_day_of_week` method in `functions.sh`.
-- Use the Dockerized version if not on an Ubuntu/Debian system.
+- Change file path: Modify `path_to_files` in `variables.sh`.
+- Switch to German days: Replace `week_array` with `woche_array` in `variables.sh`.
+- Adjust date format: Modify `start_day_of_week` in `functions.sh`.
 
 ## License
 

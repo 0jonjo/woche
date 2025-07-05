@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # The path to create and edit the file
-path_to_files="/home/$(whoami)/"
+path_to_files=/tmp/
 
 # Days of the week in German and English
 export mont="Montag"
@@ -25,7 +25,7 @@ export week_array=("$mon" "$tue" "$wed" "$thu" "$fri" "$sat" "$sun")
 
 export woche_array_string=("mont" "die" "mit" "don" "fre" "sam" "son")
 export week_array_string=("mon" "tue" "wed" "thu" "fri" "sat" "sun")
-export options=("create" "show" "help" "delete" "edit" "all")
+export options=("create" "show" "help" "delete" "edit" "all" "today" "search" "done" "open")
 
 # Create an array that is options + woche_array name of variables as strings
 export options_to_check=("${options[@]}" "${week_array_string[@]}")

@@ -53,10 +53,10 @@ create_file() {
 }
 
 create_week() {
-    day_of_month=$(date -d "$current_week" "+%d" | sed 's/^0*//')
+    day_of_month=$(date -d "$current_week" "+%-d")
     counter=0
     days_of_month=$(( $(date -d "$(date -d "$current_week" "+%Y-%m-01") +1 month -1 day" "+%d") ))
-    current_month=$(( $(date -d "$current_week" "+%m") ))
+    current_month=$(date -d "$current_week" "+%-m")
     month=$current_month
     for i in "${week_array[@]}"; do
         day_sum=$((day_of_month + counter))

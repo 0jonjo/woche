@@ -1,4 +1,4 @@
-# Woche - v1.4.0
+# Woche - v1.4.1
 
 Woche is a command-line tool for managing weekly tasks using Bash scripts. It helps you create and organize tasks in Markdown files, with support for English and German day names.
 

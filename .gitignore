@@ -1,0 +1,37 @@
+# User task files
+*.md
+!README.md
+!IMPROVEMENTS.md
+!.github/**/*.md
+
+# Editor temporary files
+*.swp
+*.swo
+*~
+.*.swp
+*.bak
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Test directories
+test_output/
+tmp/
+temp/
+
+# Local configuration
+config.local
+.env
+.env.local
+
+# Logs
+*.log
+
+# Backups
+*.backup

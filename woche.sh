@@ -2,6 +2,7 @@
 
 source functions.sh
 source variables.sh
+load_config
 
 cd "$path_to_files" > /dev/null || exit
 
@@ -82,6 +83,23 @@ case $1 in
     open)
         file_exists
         open_file_in_editor
+        exit 0
+        ;;
+    config)
+        if [ -z "$task" ]; then
+            show_config
+        elif [ "$task" = "language" ]; then
+            if [ -z "$new_task" ]; then
+                echo "Error: Please specify language (en or de)."
+                echo "Usage: woche.sh config language <en|de>"
+                exit 1
+            fi
+            set_language "$new_task"
+        else
+            echo "Error: Unknown config option '$task'."
+            echo "Usage: woche.sh config [language <en|de>]"
+            exit 1
+        fi
         exit 0
         ;;
     *)

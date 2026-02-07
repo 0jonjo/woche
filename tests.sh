@@ -31,7 +31,7 @@ delete_file
 
 # Test with more than 3 arguments
 output=$("$woche_script_path" mon "Test task" "Argument" "Extra argument")
-if [[ "$output" == *"create: a new markdown file for the current week"* ]]; then
+if [[ "$output" == *"Woche - Weekly Task Manager"* ]]; then
     echo "Test 'more than 3 arguments' command: PASSED"
 else
     echo "Test 'more than 3 arguments' command: FAILED"
@@ -67,7 +67,7 @@ check_test_result
 
 # Test invalid command
 output=$("$woche_script_path" invalid)
-if [[ "$output" == *"create: a new markdown file for the current week"* ]]; then
+if [[ "$output" == *"Woche - Weekly Task Manager"* ]]; then
     echo "Test invalid command: PASSED"
 else
     echo "Test invalid command: FAILED"
@@ -76,7 +76,7 @@ check_test_result
 
 # Test the 'help' command
 output=$("$woche_script_path" help)
-if [[ "$output" == *"create: a new markdown file for the current week"* ]]; then
+if [[ "$output" == *"Woche - Weekly Task Manager"* ]]; then
     echo "Test 'help' command: PASSED"
 else
     echo "Test 'help' command: FAILED"
@@ -284,6 +284,50 @@ if ! sed -n "${line_to_mark_done}p" "$file.md" | awk '/^- \[x\] Task to be marke
     exit 1
 fi
 cd - > /dev/null || exit
+
+# Test config language command
+output=$("$woche_script_path" config language en)
+if [[ "$output" == *"Language set to: en"* ]]; then
+    echo "Test 'config language' command: PASSED"
+else
+    echo "Test 'config language' command: FAILED"
+fi
+check_test_result
+
+# Check if config file was created
+if [ -f "$HOME/.woche/config" ]; then
+    echo "Test config file creation: PASSED"
+else
+    echo "Test config file creation: FAILED"
+fi
+check_test_result
+
+# Test automatic language detection
+# Create file in English
+output=$("$woche_script_path" create)
+output=$("$woche_script_path" mon "English task")
+
+# Switch to German and verify show still works
+output=$("$woche_script_path" config language de)
+output=$("$woche_script_path" show)
+if [[ "$output" == *"English task"* ]]; then
+    echo "Test automatic language detection: PASSED"
+else
+    echo "Test automatic language detection: FAILED"
+fi
+check_test_result
+
+# Test error when using wrong language commands
+output=$("$woche_script_path" mont "German task" 2>&1)
+if [[ "$output" == *"Error: This file uses English day names"* ]]; then
+    echo "Test language mismatch detection: PASSED"
+else
+    echo "Test language mismatch detection: FAILED"
+fi
+check_test_result
+
+# Switch back to English for cleanup
+output=$("$woche_script_path" config language en)
 
 delete_file
 

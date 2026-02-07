@@ -24,6 +24,9 @@ COMMANDS:
     search "<keyword>"          Search for a keyword in all weekly files
     open                        Open the current week's file in \$EDITOR
 
+    config                      Show current configuration
+    config language <en|de>     Set language for day names (applies to new files only)
+
     help                        Show this help message
 
 EXAMPLES:
@@ -33,6 +36,8 @@ EXAMPLES:
     woche.sh show 260203
     woche.sh done 5
     woche.sh search "meeting"
+    woche.sh config
+    woche.sh config language de
 
 For more information, visit: https://github.com/0jonjo/woche
 EOF
@@ -110,12 +115,47 @@ edit_line() {
     echo "Line ${task} edited."
 }
 
+detect_file_language() {
+    local file_path="$1"
+
+    # Check if file has German day names
+    if grep -q "^# Montag," "$file_path" || \
+       grep -q "^# Dienstag," "$file_path" || \
+       grep -q "^# Mittwoch," "$file_path"; then
+        echo "de"
+        return
+    fi
+
+    # Check if file has English day names
+    if grep -q "^# Monday," "$file_path" || \
+       grep -q "^# Tuesday," "$file_path" || \
+       grep -q "^# Wednesday," "$file_path"; then
+        echo "en"
+        return
+    fi
+
+    # Default to current config
+    echo "${WOCHE_LANGUAGE:-en}"
+}
+
 show_file() {
+    # Detect file language
+    local file_lang
+    file_lang=$(detect_file_language "$file.md")
+
+    # Use appropriate day arrays based on file language
+    local -a display_week_array
+    if [ "$file_lang" = "de" ]; then
+        display_week_array=("${woche_array[@]}")
+    else
+        display_week_array=("Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday")
+    fi
+
     start_day_formatted=$(date -d "$file" "+%d/%m/%Y")
     printf "Week starts on %s.\n\n" "$start_day_formatted"
 
     legend_string=""
-    for day_full_name in "${week_array[@]}"; do
+    for day_full_name in "${display_week_array[@]}"; do
         header_line=$(grep "^# ${day_full_name}," "$file.md")
         if [ -n "$header_line" ]; then
             date_part=$(echo "$header_line" | awk -F', ' '{print $2}' | awk '{print $1}')
@@ -139,7 +179,7 @@ show_file() {
     }
     ' "$file.md")
 
-    for ordered_day in "${week_array[@]}"; do
+    for ordered_day in "${display_week_array[@]}"; do
         day_tasks=$(echo "$awk_output" | grep "^${ordered_day}::")
 
         if [ -n "$day_tasks" ]; then
@@ -156,8 +196,30 @@ show_all_files() {
 }
 
 add_task() {
-    day_name="$1"
-    task_text="$2"
+    local day_name="$1"
+    local task_text="$2"
+
+    # Check if the day header exists in the file
+    if ! grep -q "^# $day_name," "$file.md"; then
+        # Detect file language
+        local file_lang
+        file_lang=$(detect_file_language "$file.md")
+
+        # Provide helpful error message
+        if [ "$file_lang" = "en" ] && [ "$WOCHE_LANGUAGE" = "de" ]; then
+            echo "Error: This file uses English day names, but you're using German commands."
+            echo "Use English commands (mon, tue, wed, etc.) or create a new file with: woche.sh create"
+            exit 1
+        elif [ "$file_lang" = "de" ] && [ "$WOCHE_LANGUAGE" = "en" ]; then
+            echo "Error: This file uses German day names, but you're using English commands."
+            echo "Use German commands (mont, die, mit, etc.) or create a new file with: woche.sh create"
+            exit 1
+        else
+            echo "Error: Day header '# $day_name' not found in $file.md"
+            exit 1
+        fi
+    fi
+
     escaped_task=$(sed 's/[\/&]/\\&/g' <<< "$task_text")
     sed -i "/# $day_name/ a\\- $escaped_task" "$file.md"
     echo "Task '$task_text' added to $day_name."
@@ -182,4 +244,82 @@ open_file_in_editor() {
     fi
     "$EDITOR" "$file.md"
     echo "Opened $file.md in $EDITOR."
+}
+
+load_config() {
+    local config_file="${HOME}/.woche/config"
+
+    # Set default
+    export WOCHE_LANGUAGE="en"
+
+    # Load config if exists
+    if [ -f "$config_file" ]; then
+        source "$config_file"
+    fi
+
+    # Apply language configuration
+    if [ "$WOCHE_LANGUAGE" = "de" ]; then
+        week_array=("${woche_array[@]}")
+        week_array_string=("${woche_array_string[@]}")
+        export week_array
+        export week_array_string
+    fi
+
+    # Rebuild options_to_check with correct language
+    export options_to_check=("${options[@]}" "${week_array_string[@]}")
+}
+
+show_config() {
+    local config_file="${HOME}/.woche/config"
+
+    echo "Current configuration:"
+    echo ""
+    echo "WOCHE_LANGUAGE: ${WOCHE_LANGUAGE:-en} (Language for day names: en=English, de=German)"
+    echo ""
+    echo "Config file: $config_file"
+
+    if [ ! -f "$config_file" ]; then
+        echo "Status: Using defaults (config file does not exist)"
+    else
+        echo "Status: Config file found"
+    fi
+}
+
+set_language() {
+    local new_language="$1"
+    local config_dir="${HOME}/.woche"
+    local config_file="$config_dir/config"
+
+    # Validate language
+    if [ "$new_language" != "en" ] && [ "$new_language" != "de" ]; then
+        echo "Error: Invalid language '$new_language'. Use 'en' or 'de'."
+        exit 1
+    fi
+
+    # Create config directory if it doesn't exist
+    mkdir -p "$config_dir"
+
+    # Update or create config file
+    if [ -f "$config_file" ]; then
+        # Update existing config
+        if grep -q "^WOCHE_LANGUAGE=" "$config_file"; then
+            sed -i "s/^WOCHE_LANGUAGE=.*/WOCHE_LANGUAGE=\"$new_language\"/" "$config_file"
+        else
+            echo "WOCHE_LANGUAGE=\"$new_language\"" >> "$config_file"
+        fi
+    else
+        # Create new config file
+        cat > "$config_file" << EOF
+# Woche Configuration File
+
+# Language for day names: en (English) or de (German)
+WOCHE_LANGUAGE="$new_language"
+EOF
+    fi
+
+    echo "Language set to: $new_language"
+    echo "Config saved to: $config_file"
+    echo ""
+    echo "Note: This language setting applies to NEW files created from now on."
+    echo "Existing files will continue to be displayed correctly regardless of this setting."
 }

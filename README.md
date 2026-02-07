@@ -1,4 +1,4 @@
-# Woche - v1.4.0
+# Woche - v1.5.0
 
 Woche is a command-line tool for managing weekly tasks using Bash scripts. It helps you create and organize tasks in Markdown files, with support for English and German day names.
 
@@ -9,6 +9,8 @@ Woche is a command-line tool for managing weekly tasks using Bash scripts. It he
 - View tasks by week, grouped by day with line numbers.
 - Search for tasks across all weeks.
 - Open weekly files in your preferred editor.
+- Configure language preference (English or German).
+- Automatic language detection for displaying existing files.
 
 ## Usage
 
@@ -49,6 +51,20 @@ Woche is a command-line tool for managing weekly tasks using Bash scripts. It he
 ./woche.sh search "<keyword>"  # Search for a keyword in all weekly files
 ```
 
+### Configuration
+
+```bash
+./woche.sh config                  # Show current configuration
+./woche.sh config language en      # Set language to English
+./woche.sh config language de      # Set language to German
+```
+
+**Note:** Language setting applies to new files created after the change. Existing files will continue to be displayed correctly regardless of the language setting, thanks to automatic language detection.
+
+**Day commands:**
+- English: `mon`, `tue`, `wed`, `thu`, `fri`, `sat`, `sun`
+- German: `mont`, `die`, `mit`, `don`, `fre`, `sam`, `son`
+
 ### Other Commands
 
 ```bash
@@ -73,11 +89,32 @@ docker build -t woche-app .  # Build the image
 docker run -it woche-app     # Run the container
 ```
 
-## Customization
+## Configuration
+
+Woche stores configuration in `~/.woche/config`. You can manage settings using the `config` command:
+
+```bash
+# View current configuration
+./woche.sh config
+
+# Change language (applies to new files)
+./woche.sh config language en  # English
+./woche.sh config language de  # German
+```
+
+### Manual Configuration
+
+You can also edit `~/.woche/config` directly:
+
+```bash
+# Language for day names: en (English) or de (German)
+WOCHE_LANGUAGE="en"
+```
+
+### Advanced Customization
 
 - Change file path: Modify `path_to_files` in `variables.sh`.
-- Switch to German days: Replace `week_array` with `woche_array` in `variables.sh`.
-- Adjust date format: Modify `start_day_of_week` in `functions.sh`.
+- Adjust date format: Modify date format strings in `functions.sh`.
 
 ## License
 

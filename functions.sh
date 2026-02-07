@@ -1,16 +1,41 @@
 #!/usr/bin/env bash
 
 help() {
-    echo "create: a new markdown file for the current week"
-    echo "Use the day alias to add a task to the day of the week."
-    echo "today: add a task to the current day"
-    echo "show: show the tasks for the current week"
-    echo "show YYMMDD: show the tasks for the week starting on YYMMDD"
-    echo "show last: show the tasks for last week"
-    echo "delete X: delete a task from the current week - X is the line number"
-    echo "edit X: edit a task from the current week - X is the line number"
-    echo "all: show all markdown files in the current directory"
-    echo "open: open the current week's file in your default editor"
+    cat << EOF
+Woche - Weekly Task Manager
+
+USAGE:
+    woche.sh <command> [arguments]
+
+COMMANDS:
+    create                      Create a new markdown file for the current week
+    <day> "<task>"              Add a task to a specific day
+                                Days: mon, tue, wed, thu, fri, sat, sun
+                                (or mont, die, mit, don, fre, sam, son for German)
+    today "<task>"              Add a task to the current day
+
+    show [YYMMDD|last]          Show tasks for current week, specific week, or last week
+    all                         List all markdown files in the current directory
+
+    edit <line> "<new_task>"    Edit a task by line number
+    delete <line>               Delete a task by line number (requires confirmation)
+    done <line>                 Mark a task as complete
+
+    search "<keyword>"          Search for a keyword in all weekly files
+    open                        Open the current week's file in \$EDITOR
+
+    help                        Show this help message
+
+EXAMPLES:
+    woche.sh create
+    woche.sh mon "Team meeting at 10am"
+    woche.sh today "Review pull requests"
+    woche.sh show 260203
+    woche.sh done 5
+    woche.sh search "meeting"
+
+For more information, visit: https://github.com/0jonjo/woche
+EOF
 }
 
 current_week() {

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154  # globals (file, task, new_task, day names) come from woche.sh and variables.sh
 
 help() {
     cat << EOF
@@ -24,10 +25,13 @@ COMMANDS:
     search "<keyword>"          Search for a keyword in all weekly files
     open                        Open the current week's file in \$EDITOR
 
+    init                        Set up language and directory (asked on first run)
     config                      Show current configuration
     config language <en|de>     Set language for day names (applies to new files only)
+    config dir <path>           Set the directory for weekly files (files are not moved)
 
     help                        Show this help message
+    --version                   Show the version
 
 EXAMPLES:
     woche.sh create
@@ -100,7 +104,7 @@ create_week() {
 }
 
 delete_line() {
-    read -p "Are you sure you want to delete line ${task}? (y/N): " confirm
+    read -r -p "Are you sure you want to delete line ${task}? (y/N): " confirm
     if [[ "$confirm" =~ ^[yY]$ ]]; then
         sed -i "${task}d" "$file.md"
         echo "Line ${task} deleted."
@@ -191,7 +195,7 @@ show_file() {
 }
 
 show_all_files() {
-    echo "All markdown files in $path_to_files:"
+    echo "All markdown files in $WOCHE_DIR:"
     ls -1 ./*.md
 }
 
@@ -228,7 +232,7 @@ add_task() {
 search_files() {
     search_term="$1"
     echo "Searching for '$search_term' in markdown files:"
-    grep -n "$search_term" "$path_to_files"/*.md
+    grep -n "$search_term" ./*.md
 }
 
 mark_task_done() {
@@ -247,39 +251,218 @@ open_file_in_editor() {
 }
 
 load_config() {
-    local config_file="${HOME}/.woche/config"
+    # Environment variables take precedence over the config file
+    woche_env_language="${WOCHE_LANGUAGE:-}"
+    woche_env_dir="${WOCHE_DIR:-}"
 
-    # Set default
-    export WOCHE_LANGUAGE="en"
-
-    # Load config if exists
-    if [ -f "$config_file" ]; then
-        source "$config_file"
+    WOCHE_LANGUAGE=""
+    WOCHE_DIR=""
+    if [ -f "$WOCHE_CONFIG" ]; then
+        # shellcheck source=/dev/null
+        source "$WOCHE_CONFIG"
     fi
 
-    # Apply language configuration
+    # What the config file alone says ('woche init' suggests these)
+    woche_config_language="$WOCHE_LANGUAGE"
+    woche_config_dir="$WOCHE_DIR"
+
+    WOCHE_LANGUAGE="${woche_env_language:-${woche_config_language:-en}}"
+    WOCHE_DIR="${woche_env_dir:-${woche_config_dir:-${HOME}/woche}}"
+
+    if ! valid_language "$WOCHE_LANGUAGE"; then
+        echo "Warning: Invalid language '$WOCHE_LANGUAGE', using 'en'." >&2
+        WOCHE_LANGUAGE="en"
+    fi
+    WOCHE_DIR=$(normalize_dir "$WOCHE_DIR")
+    export WOCHE_LANGUAGE WOCHE_DIR
+
+    apply_language
+}
+
+valid_language() {
+    [ "$1" = "en" ] || [ "$1" = "de" ]
+}
+
+apply_language() {
     if [ "$WOCHE_LANGUAGE" = "de" ]; then
         week_array=("${woche_array[@]}")
         week_array_string=("${woche_array_string[@]}")
-        export week_array
-        export week_array_string
+    else
+        week_array=("$mon" "$tue" "$wed" "$thu" "$fri" "$sat" "$sun")
+        week_array_string=("mon" "tue" "wed" "thu" "fri" "sat" "sun")
     fi
 
     # Rebuild options_to_check with correct language
-    export options_to_check=("${options[@]}" "${week_array_string[@]}")
+    options_to_check=("${options[@]}" "${week_array_string[@]}")
+}
+
+valid_command() {
+    local option
+    for option in "${options_to_check[@]}"; do
+        if [ "$option" = "$1" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Without a config file, an interactive run asks for the settings first.
+# Scripts, cron and tests (no TTY) silently use the defaults instead.
+first_run_setup() {
+    if [ ! -f "$WOCHE_CONFIG" ] && [ -t 0 ] && [ -t 1 ]; then
+        echo "Welcome to woche! Let's set it up (run 'woche.sh init' to change it later)."
+        echo ""
+        woche_init
+        echo ""
+    fi
+}
+
+language_from_locale() {
+    case "${LC_ALL:-${LANG:-}}" in
+        de*) echo "de" ;;
+        *) echo "en" ;;
+    esac
+}
+
+# Absolute path, with a leading ~ expanded (also when it came quoted from the config)
+normalize_dir() {
+    local dir="$1"
+    # shellcheck disable=SC2088  # matching a literal ~ on purpose
+    case "$dir" in
+        "~") dir="$HOME" ;;
+        "~/"*) dir="$HOME/${dir#"~/"}" ;;
+    esac
+    realpath -ms -- "$dir"
+}
+
+# A v1.5 config has no WOCHE_DIR: say where the files are read from now
+missing_dir_hint() {
+    if [ -f "$WOCHE_CONFIG" ] && [ -z "$woche_config_dir" ] && [ -z "$woche_env_dir" ]; then
+        echo "Note: WOCHE_DIR is not set in $WOCHE_CONFIG, using $WOCHE_DIR." >&2
+        echo "      Run 'woche.sh config dir <path>' to choose the directory of your weekly files." >&2
+    fi
+}
+
+woche_init() {
+    local default_language default_dir language dir
+
+    if valid_language "$woche_config_language"; then
+        default_language="$woche_config_language"
+    else
+        default_language=$(language_from_locale)
+    fi
+    default_dir=$(normalize_dir "${woche_config_dir:-${HOME}/woche}")
+
+    # EOF (Ctrl-D) cancels without writing anything
+    while true; do
+        read -r -p "Language for day names [en/de] (default: $default_language): " language || init_cancelled
+        language="${language:-$default_language}"
+        if valid_language "$language"; then
+            break
+        fi
+        echo "Please answer 'en' or 'de'."
+    done
+
+    read -r -p "Directory for weekly files (default: $default_dir): " dir || init_cancelled
+    dir=$(normalize_dir "${dir:-$default_dir}")
+
+    if ! mkdir -p -- "$dir"; then
+        echo "Error: Could not create directory '$dir'."
+        exit 1
+    fi
+
+    set_config_value WOCHE_LANGUAGE "$language" || config_write_failed
+    set_config_value WOCHE_DIR "$dir" || config_write_failed
+
+    echo "Configuration saved to $WOCHE_CONFIG"
+    echo "  Language:  $language"
+    echo "  Directory: $dir"
+    warn_env_override WOCHE_LANGUAGE "$woche_env_language"
+    warn_env_override WOCHE_DIR "$woche_env_dir"
+
+    # Keep running with the new values, unless the environment overrides them
+    woche_config_language="$language"
+    woche_config_dir="$dir"
+    if [ -z "$woche_env_language" ]; then
+        WOCHE_LANGUAGE="$language"
+    fi
+    if [ -z "$woche_env_dir" ]; then
+        WOCHE_DIR="$dir"
+    fi
+    apply_language
+}
+
+init_cancelled() {
+    echo ""
+    echo "Setup cancelled, nothing was saved."
+    exit 1
+}
+
+config_write_failed() {
+    echo "Error: Could not write $WOCHE_CONFIG."
+    exit 1
+}
+
+# Usage: warn_env_override <variable name> <value from the environment>
+warn_env_override() {
+    if [ -n "$2" ]; then
+        echo ""
+        echo "Warning: $1 is set in your environment and overrides the config file."
+    fi
+}
+
+# Set KEY=value in the config file, replacing the existing line if there is one.
+# Writes through the file (not mv) so a symlinked config keeps working.
+set_config_value() {
+    local key="$1"
+    local value="$2"
+    local tmp
+    local status
+
+    mkdir -p "$(dirname "$WOCHE_CONFIG")" || return 1
+    if [ ! -f "$WOCHE_CONFIG" ]; then
+        echo "# Woche Configuration File" > "$WOCHE_CONFIG" || return 1
+    fi
+
+    tmp=$(mktemp) || return 1
+    KEY="$key" LINE="$(printf '%s=%q' "$key" "$value")" awk '
+        index($0, ENVIRON["KEY"] "=") == 1 {
+            if (!replaced) print ENVIRON["LINE"]
+            replaced = 1
+            next
+        }
+        { print }
+        END { if (!replaced) print ENVIRON["LINE"] }
+    ' "$WOCHE_CONFIG" > "$tmp" && cat "$tmp" > "$WOCHE_CONFIG"
+    status=$?
+    rm -f "$tmp"
+    return $status
 }
 
 show_config() {
-    local config_file="${HOME}/.woche/config"
+    local language_source="default"
+    local dir_source="default"
+
+    if [ -n "$woche_env_language" ]; then
+        language_source="environment"
+    elif [ -n "$woche_config_language" ]; then
+        language_source="config file"
+    fi
+    if [ -n "$woche_env_dir" ]; then
+        dir_source="environment"
+    elif [ -n "$woche_config_dir" ]; then
+        dir_source="config file"
+    fi
 
     echo "Current configuration:"
     echo ""
-    echo "WOCHE_LANGUAGE: ${WOCHE_LANGUAGE:-en} (Language for day names: en=English, de=German)"
+    echo "WOCHE_LANGUAGE: $WOCHE_LANGUAGE (Language for day names: en=English, de=German) [$language_source]"
+    echo "WOCHE_DIR:      $WOCHE_DIR (Where the weekly files are stored) [$dir_source]"
     echo ""
-    echo "Config file: $config_file"
+    echo "Config file: $WOCHE_CONFIG"
 
-    if [ ! -f "$config_file" ]; then
-        echo "Status: Using defaults (config file does not exist)"
+    if [ ! -f "$WOCHE_CONFIG" ]; then
+        echo "Status: Using defaults (config file does not exist). Run 'woche.sh init' to set it up."
     else
         echo "Status: Config file found"
     fi
@@ -287,39 +470,46 @@ show_config() {
 
 set_language() {
     local new_language="$1"
-    local config_dir="${HOME}/.woche"
-    local config_file="$config_dir/config"
 
     # Validate language
-    if [ "$new_language" != "en" ] && [ "$new_language" != "de" ]; then
+    if ! valid_language "$new_language"; then
         echo "Error: Invalid language '$new_language'. Use 'en' or 'de'."
         exit 1
     fi
 
-    # Create config directory if it doesn't exist
-    mkdir -p "$config_dir"
-
-    # Update or create config file
-    if [ -f "$config_file" ]; then
-        # Update existing config
-        if grep -q "^WOCHE_LANGUAGE=" "$config_file"; then
-            sed -i "s/^WOCHE_LANGUAGE=.*/WOCHE_LANGUAGE=\"$new_language\"/" "$config_file"
-        else
-            echo "WOCHE_LANGUAGE=\"$new_language\"" >> "$config_file"
-        fi
-    else
-        # Create new config file
-        cat > "$config_file" << EOF
-# Woche Configuration File
-
-# Language for day names: en (English) or de (German)
-WOCHE_LANGUAGE="$new_language"
-EOF
-    fi
+    set_config_value WOCHE_LANGUAGE "$new_language" || config_write_failed
 
     echo "Language set to: $new_language"
-    echo "Config saved to: $config_file"
+    echo "Config saved to: $WOCHE_CONFIG"
     echo ""
     echo "Note: This language setting applies to NEW files created from now on."
     echo "Existing files will continue to be displayed correctly regardless of this setting."
+    warn_env_override WOCHE_LANGUAGE "$woche_env_language"
+}
+
+set_dir() {
+    local new_dir
+    local old_dir
+
+    new_dir=$(normalize_dir "$1")
+    old_dir="$WOCHE_DIR"
+
+    if ! mkdir -p -- "$new_dir"; then
+        echo "Error: Could not create directory '$new_dir'."
+        exit 1
+    fi
+
+    set_config_value WOCHE_DIR "$new_dir" || config_write_failed
+
+    echo "Directory set to: $new_dir"
+    echo "Config saved to: $WOCHE_CONFIG"
+
+    # Files are never moved automatically
+    if [ "$old_dir" != "$new_dir" ] && compgen -G "$old_dir/[0-9][0-9][0-9][0-9][0-9][0-9].md" > /dev/null; then
+        echo ""
+        echo "Note: The weekly files in $old_dir were not moved. To move them, run:"
+        printf '    mv -n %q/[0-9][0-9][0-9][0-9][0-9][0-9].md %q/\n' "$old_dir" "$new_dir"
+    fi
+
+    warn_env_override WOCHE_DIR "$woche_env_dir"
 }

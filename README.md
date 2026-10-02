@@ -53,11 +53,18 @@ Woche is a command-line tool for managing weekly tasks using Bash scripts. It he
 
 ### Configuration
 
+On the first interactive run, woche asks for the language and the directory for your weekly files (default: `~/woche`) and saves them to `~/.woche/config`. Scripts and cron jobs (no terminal) just use the defaults.
+
 ```bash
+./woche.sh init                    # Set up language and directory again
 ./woche.sh config                  # Show current configuration
 ./woche.sh config language en      # Set language to English
 ./woche.sh config language de      # Set language to German
+./woche.sh config dir ~/notes      # Store weekly files in ~/notes (existing files are not moved)
+./woche.sh --version               # Show the version
 ```
+
+The environment variables `WOCHE_DIR` and `WOCHE_LANGUAGE` override the config file.
 
 **Note:** Language setting applies to new files created after the change. Existing files will continue to be displayed correctly regardless of the language setting, thanks to automatic language detection.
 
@@ -77,7 +84,7 @@ Woche is a command-line tool for managing weekly tasks using Bash scripts. It he
 To run the test suite:
 
 ```bash
-./test.sh
+./tests.sh
 ```
 
 ## Docker
@@ -109,11 +116,13 @@ You can also edit `~/.woche/config` directly:
 ```bash
 # Language for day names: en (English) or de (German)
 WOCHE_LANGUAGE="en"
+# Directory where the weekly files are stored
+WOCHE_DIR="/home/you/woche"
 ```
 
 ### Advanced Customization
 
-- Change file path: Modify `path_to_files` in `variables.sh`.
+- Change file path: `./woche.sh config dir <path>` or set `WOCHE_DIR`.
 - Adjust date format: Modify date format strings in `functions.sh`.
 
 ## License

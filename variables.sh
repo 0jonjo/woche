@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-# The path to create and edit the file
-path_to_files=/tmp/
+export WOCHE_VERSION="1.6.0-dev"
+
+export WOCHE_CONFIG="${HOME}/.woche/config"
 
 # Days of the week in German and English
 export mont="Montag"
@@ -25,7 +26,7 @@ export week_array=("$mon" "$tue" "$wed" "$thu" "$fri" "$sat" "$sun")
 
 export woche_array_string=("mont" "die" "mit" "don" "fre" "sam" "son")
 export week_array_string=("mon" "tue" "wed" "thu" "fri" "sat" "sun")
-export options=("create" "show" "help" "delete" "edit" "all" "today" "search" "done" "open" "config")
+export options=("create" "show" "help" "delete" "edit" "all" "today" "search" "done" "open" "config" "init" "--version")
 
 # Create an array that is options + woche_array name of variables as strings
 export options_to_check=("${options[@]}" "${week_array_string[@]}")

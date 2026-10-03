@@ -6,7 +6,7 @@ Woche is a command-line tool for managing weekly tasks using Bash scripts. It he
 
 - Create weekly Markdown files.
 - Add, edit, delete, and mark tasks as complete.
-- View tasks by week, grouped by day with line numbers.
+- View tasks by week, grouped by day, each with a short address (`mon.2`).
 - Search for tasks across all weeks.
 - Open weekly files in your preferred editor.
 - Configure language preference (English or German).
@@ -39,10 +39,21 @@ Woche is a command-line tool for managing weekly tasks using Bash scripts. It he
 
 ### Managing Tasks
 
+`show` prints an address next to each task: `mon.2` is the second task on Monday.
+
 ```bash
-./woche.sh edit <line_number> "<new_task>"  # Edit a task by line number
-./woche.sh delete <line_number>             # Delete a task by line number (requires confirmation)
-./woche.sh done <line_number>               # Mark a task as complete
+./woche.sh done mon 2                 # Mark a task as complete
+./woche.sh edit mon 2 "<new_task>"    # Edit a task (a finished task stays finished)
+./woche.sh delete mon 2               # Delete a task (requires confirmation)
+```
+
+`mon.2` works as well, and so does a plain line number of the file (the addressing of older versions).
+
+To work on another week, set `WOCHE_WEEK` to its Monday:
+
+```bash
+WOCHE_WEEK=260921 ./woche.sh create
+WOCHE_WEEK=260921 ./woche.sh fri "Filled in later"
 ```
 
 ### Searching Tasks

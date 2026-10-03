@@ -20,7 +20,7 @@ if [ "$#" -eq 0 ]; then
 fi
 
 # Check the number of arguments
-if [ "$#" -gt 3 ]; then
+if [ "$#" -gt 4 ]; then
     help
     exit 1
 fi
@@ -88,14 +88,14 @@ case $1 in
         ;;
     delete)
         file_exists
-        line_exists
-        delete_line
+        resolve_task "$2" "$3"
+        delete_task
         exit 0
         ;;
     edit)
         file_exists
-        line_exists
-        edit_line
+        resolve_task "$2" "$3" "$4"
+        edit_task
         exit 0
         ;;
     show)
@@ -126,8 +126,8 @@ case $1 in
         ;;
     done)
         file_exists
-        line_exists
-        mark_task_done "$task"
+        resolve_task "$2" "$3"
+        mark_task_done
         exit 0
         ;;
     open)

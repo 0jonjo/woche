@@ -86,7 +86,16 @@ esac
 first_run_setup
 missing_dir_hint
 
-mkdir -p -- "$WOCHE_DIR" && cd -- "$WOCHE_DIR" > /dev/null || exit 1
+# Only 'create' makes the directory: listing, searching or pressing TAB
+# (completion runs 'all') must not leave an empty ~/woche behind
+if [ "$1" = "create" ]; then
+    mkdir -p -- "$WOCHE_DIR" || exit 1
+fi
+if [ ! -d "$WOCHE_DIR" ]; then
+    echo "Error: No weekly files yet in $WOCHE_DIR. Run '$woche_name create' to start."
+    exit 1
+fi
+cd -- "$WOCHE_DIR" > /dev/null || exit 1
 
 current_week
 last_week

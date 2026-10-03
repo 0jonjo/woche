@@ -14,6 +14,8 @@ homepage: https://github.com/0jonjo/woche
 license: GPL-3.0
 
 # No Depends: bash, coreutils, sed, grep and awk are all in a base Debian system
+suggests:
+  - bash-completion
 
 contents:
   - src: ./woche.sh

@@ -127,6 +127,8 @@ WOCHE_DIR="/home/you/woche"
 woche config dir <directory-of-your-weekly-files>
 ```
 
+If you had an alias or a symlink pointing to `woche.sh` in a checkout, remove it so the installed `woche` is the one that runs (`type woche` shows which one does).
+
 ## Development
 
 ```bash

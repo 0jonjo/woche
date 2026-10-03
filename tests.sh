@@ -8,7 +8,7 @@ trap 'rm -rf "$test_root"' EXIT
 export HOME="$test_root/home"
 export WOCHE_DIR="$test_root/files"
 unset WOCHE_LANGUAGE LC_ALL
-mkdir -p "$HOME"
+mkdir -p "$HOME" "$WOCHE_DIR"
 
 repo_dir=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
 woche_script_path="$repo_dir/woche.sh"
@@ -830,3 +830,15 @@ assert_contains "completion of commands" "$(complete_words woche "do")" "done"
 assert_contains "completion of days" "$(complete_words woche "done" t)" "tue"
 assert_contains "completion of config languages" "$(complete_words woche config language "")" "en de"
 assert_contains "completion of weeks for show" "$(complete_words "$woche_script_path" show "")" "$current_week"
+
+# Test commands other than 'create' do not create the directory (TAB on 'show' runs 'all')
+home_nodir="$test_root/nodir"
+output=$(woche_in "$home_nodir" -- all)
+assert_contains "'all' without a directory" "$output" "Error: No weekly files yet in $home_nodir/woche."
+output=$(woche_in "$home_nodir" -- show)
+if [ ! -e "$home_nodir/woche" ]; then
+    echo "Test 'all'/'show' do not create the directory: PASSED"
+else
+    echo "Test 'all'/'show' do not create the directory: FAILED"
+    exit 1
+fi

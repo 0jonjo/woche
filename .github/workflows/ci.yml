@@ -64,4 +64,4 @@ jobs:
           test ! -e "$HOME/.woche/config"
           man -w woche
           sudo apt-get remove -y woche
-          ! command -v woche
+          test ! -e /usr/bin/woche

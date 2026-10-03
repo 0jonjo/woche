@@ -16,11 +16,13 @@ COMMANDS:
     today "<task>"              Add a task to the current day
 
     show [YYMMDD|last]          Show tasks for current week, specific week, or last week
-    all                         List all markdown files in the current directory
+    all                         List all weekly files
 
-    edit <line> "<new_task>"    Edit a task by line number
-    delete <line>               Delete a task by line number (requires confirmation)
-    done <line>                 Mark a task as complete
+    done <day> <n>              Mark the n-th task of a day as complete (e.g. done mon 2)
+    edit <day> <n> "<new_task>" Edit the n-th task of a day (keeps it done if it was)
+    delete <day> <n>            Delete the n-th task of a day (requires confirmation)
+                                'show' prints each task's address (mon.2); 'mon.2' works
+                                too, and so does a plain line number of the file
 
     search "<keyword>"          Search for a keyword in all weekly files
     open                        Open the current week's file in \$EDITOR
@@ -38,16 +40,37 @@ EXAMPLES:
     woche.sh mon "Team meeting at 10am"
     woche.sh today "Review pull requests"
     woche.sh show 260203
-    woche.sh done 5
+    woche.sh done mon 2
+    woche.sh edit tue 1 "Call the bank"
     woche.sh search "meeting"
     woche.sh config
     woche.sh config language de
+    woche.sh config dir ~/Documents/woche
+
+ENVIRONMENT:
+    WOCHE_DIR, WOCHE_LANGUAGE   Override the config file (~/.woche/config)
+    WOCHE_WEEK=YYMMDD           Work on another week (its Monday), e.g. to create
+                                or fill last week: WOCHE_WEEK=260921 woche.sh fri "..."
 
 For more information, visit: https://github.com/0jonjo/woche
 EOF
 }
 
+# YYMMDD -> YYYY-MM-DD, so date(1) never has to guess
+week_to_date() {
+    echo "20${1:0:2}-${1:2:2}-${1:4:2}"
+}
+
 current_week() {
+    if [ -n "${WOCHE_WEEK:-}" ]; then
+        if ! valid_week "$WOCHE_WEEK"; then
+            echo "Error: WOCHE_WEEK must be the Monday of a week as YYMMDD (got '$WOCHE_WEEK')."
+            exit 1
+        fi
+        current_week="$WOCHE_WEEK"
+        return
+    fi
+
     current_week=$(date -d "last monday" "+%y%m%d")
 
     if [ "$(date "+%u")" == 1 ]; then
@@ -55,8 +78,12 @@ current_week() {
     fi
 }
 
+valid_week() {
+    [[ "$1" =~ ^[0-9]{6}$ ]] && [ "$(date -d "$(week_to_date "$1")" "+%u" 2> /dev/null)" = 1 ]
+}
+
 last_week() {
-    last_week=$(date -d "$current_week - 7 days" "+%y%m%d")
+    last_week=$(date -d "$(week_to_date "$current_week") -7 days" "+%y%m%d")
     export last_week
 }
 
@@ -74,49 +101,227 @@ file_already_exists() {
     fi
 }
 
-line_exists() {
-    if [ -z "$(sed -n "${task}p" "$file.md")" ]; then
-        echo "Error: Line $task does not exist."
-        exit 1
-    fi
-}
-
 create_file() {
     create_week
     echo "The file $file.md has been created."
 }
 
 create_week() {
-    day_of_month=$(date -d "$current_week" "+%-d")
-    counter=0
-    days_of_month=$(( $(date -d "$(date -d "$current_week" "+%Y-%m-01") +1 month -1 day" "+%d") ))
-    current_month=$(date -d "$current_week" "+%-m")
-    month=$current_month
-    for i in "${week_array[@]}"; do
-        day_sum=$((day_of_month + counter))
-        if [ $day_sum -gt $days_of_month ]; then
-            day_sum=$((day_sum - days_of_month))
-            month=$((current_month + 1))
-        fi
-        printf "# %s\n\n" "$i, $day_sum/$month" >> "$file.md"
-        ((counter++))
+    local week_date
+    local i
+
+    week_date=$(week_to_date "$current_week")
+    for i in "${!week_array[@]}"; do
+        printf "# %s, %s\n\n" "${week_array[$i]}" "$(date -d "$week_date +$i days" "+%-d/%-m")" >> "$file.md"
     done
 }
 
-delete_line() {
-    read -r -p "Are you sure you want to delete line ${task}? (y/N): " confirm
+# --- Week file format ---------------------------------------------------
+# A week file is a list of days, each one a header followed by its tasks:
+#
+#   # Monday, 28/9
+#   - open task
+#   - [x] finished task
+#
+# Everything below reads and writes the file through these helpers.
+
+# Usage: day_header_line <full day name>
+day_header_line() {
+    awk -v header="# $1," 'index($0, header) == 1 { print NR; exit }' "$file.md"
+}
+
+# Usage: day_task_lines <full day name>   (one line number per task, in order)
+day_task_lines() {
+    awk -v header="# $1," '
+        /^# / { in_day = (index($0, header) == 1); next }
+        in_day && /^- / { print NR }
+    ' "$file.md"
+}
+
+is_task_line() {
+    [[ "$1" =~ ^[1-9][0-9]*$ ]] && sed -n "${1}p" "$file.md" | grep -q '^- '
+}
+
+# Usage: day_insert_line <full day name>
+# Where a new task goes: after the day's last task (and its indented lines), or the header
+day_insert_line() {
+    awk -v header="# $1," '
+        /^# / { in_day = (index($0, header) == 1); if (in_day) last = NR; next }
+        in_day && /^- / { last = NR; after_task = 1; next }
+        in_day && after_task && /^[ \t]+[^ \t]/ { last = NR; next }
+        { after_task = 0 }
+        END { print last }
+    ' "$file.md"
+}
+
+# Usage: write_line <insert-after|replace|delete> <line number> [text]
+write_line() {
+    local tmp
+    local status
+
+    tmp=$(mktemp) || exit 1
+    OP="$1" N="$2" TEXT="${3:-}" awk '
+        NR == ENVIRON["N"] {
+            if (ENVIRON["OP"] == "insert-after") { print; print ENVIRON["TEXT"]; next }
+            if (ENVIRON["OP"] == "replace") { print ENVIRON["TEXT"]; next }
+            if (ENVIRON["OP"] == "delete") { next }
+        }
+        { print }
+    ' "$file.md" > "$tmp" && cat "$tmp" > "$file.md"
+    status=$?
+    rm -f "$tmp"
+    if [ "$status" -ne 0 ]; then
+        echo "Error: Could not write $file.md."
+        exit 1
+    fi
+}
+
+# Index (0-6) of a day abbreviation, English or German
+day_index() {
+    local i
+    for i in "${!english_day_abbrs[@]}"; do
+        if [ "${english_day_abbrs[$i]}" = "$1" ] || [ "${german_day_abbrs[$i]}" = "$1" ]; then
+            echo "$i"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Day names and abbreviations in the language the week file was written in
+load_file_days() {
+    if [ "$(detect_file_language "$file.md")" = "de" ]; then
+        file_day_names=("${woche_array[@]}")
+        file_day_abbrs=("${german_day_abbrs[@]}")
+    else
+        file_day_names=("${english_day_names[@]}")
+        file_day_abbrs=("${english_day_abbrs[@]}")
+    fi
+}
+
+# Resolves a task address into task_line and task_label; the arguments after
+# the address are left in task_rest. Accepted: "<day> <n>", "<day>.<n>" and,
+# for compatibility, a plain line number.
+resolve_task() {
+    local day
+    local n
+    local index
+
+    if [[ "$1" =~ ^[0-9]+$ ]]; then
+        task_rest=("${@:2}")
+        if ! task_line=$(task_number "$1") || ! is_task_line "$task_line"; then
+            echo "Error: Line $1 is not a task."
+            exit 1
+        fi
+        task_label="Line $task_line"
+        return
+    fi
+
+    if [[ "$1" =~ ^([a-z]+)\.([0-9]+)$ ]]; then
+        day="${BASH_REMATCH[1]}"
+        n="${BASH_REMATCH[2]}"
+        task_rest=("${@:2}")
+    elif [[ "${2:-}" =~ ^[0-9]+$ ]]; then
+        day="$1"
+        n="$2"
+        task_rest=("${@:3}")
+    else
+        echo "Error: Tell which task, e.g. 'mon 2' (the second task on Monday)."
+        exit 1
+    fi
+
+    if ! index=$(day_index "$day"); then
+        echo "Error: Invalid day '$day'."
+        exit 1
+    fi
+
+    load_file_days
+    task_label="Task ${file_day_abbrs[$index]}.$n"
+    if ! n=$(task_number "$n"); then
+        echo "Error: $task_label does not exist."
+        exit 1
+    fi
+    task_label="Task ${file_day_abbrs[$index]}.$n"
+    task_line=$(day_task_lines "${file_day_names[$index]}" | sed -n "${n}p")
+    if [ -z "$task_line" ]; then
+        echo "Error: $task_label does not exist."
+        exit 1
+    fi
+}
+
+# A positive number without leading zeros (fails for 0 or absurdly big numbers)
+task_number() {
+    if [[ "$1" =~ ^0*([1-9][0-9]{0,6})$ ]]; then
+        echo "${BASH_REMATCH[1]}"
+    else
+        return 1
+    fi
+}
+
+# Usage: no_extra_args <how many arguments may follow the task address>
+no_extra_args() {
+    if [ "${#task_rest[@]}" -gt "$1" ]; then
+        too_many_args
+    fi
+}
+
+# Usage: max_args <n> "$@"-style check against the command line ($# of woche.sh)
+max_args() {
+    if [ "$woche_argc" -gt "$1" ]; then
+        too_many_args
+    fi
+}
+
+too_many_args() {
+    echo "Error: Too many arguments. Put text with spaces in quotes, e.g.: ${woche_name:-woche} mon \"Buy milk\""
+    exit 1
+}
+
+task_at() {
+    sed -n "${1}p" "$file.md"
+}
+
+delete_task() {
+    local confirm
+
+    read -r -p "Delete '$(task_at "$task_line")'? (y/N): " confirm
     if [[ "$confirm" =~ ^[yY]$ ]]; then
-        sed -i "${task}d" "$file.md"
-        echo "Line ${task} deleted."
+        write_line delete "$task_line"
+        echo "$task_label deleted."
     else
         echo "Deletion cancelled."
     fi
 }
 
-edit_line() {
-    escaped_task=$(sed 's/[\/&]/\\&/g' <<< "$new_task")
-    sed -i "${task}s/.*/- $escaped_task/" "$file.md"
-    echo "Line ${task} edited."
+edit_task() {
+    local prefix="- "
+
+    if [ -z "$task_text" ]; then
+        echo "Error: Please give the new text for the task."
+        exit 1
+    fi
+
+    # Keep a finished task finished
+    if task_at "$task_line" | grep -q '^- \[[xX]\] ' && [[ "$task_text" != "["[xX]"] "* ]]; then
+        prefix="- [x] "
+    fi
+
+    write_line replace "$task_line" "$prefix$task_text"
+    echo "$task_label edited."
+}
+
+mark_task_done() {
+    local line
+
+    line=$(task_at "$task_line")
+    if [[ "$line" == "- [x] "* ]] || [[ "$line" == "- [X] "* ]]; then
+        echo "$task_label is already done."
+        return
+    fi
+
+    line="${line#- }"
+    write_line replace "$task_line" "- [x] ${line#"[ ] "}"
+    echo "$task_label marked as done."
 }
 
 detect_file_language() {
@@ -143,68 +348,57 @@ detect_file_language() {
 }
 
 show_file() {
-    # Detect file language
-    local file_lang
-    file_lang=$(detect_file_language "$file.md")
+    local i
+    local header
+    local legend_string=""
+    local day_tasks
 
-    # Use appropriate day arrays based on file language
-    local -a display_week_array
-    if [ "$file_lang" = "de" ]; then
-        display_week_array=("${woche_array[@]}")
-    else
-        display_week_array=("Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday")
-    fi
+    load_file_days
 
-    start_day_formatted=$(date -d "$file" "+%d/%m/%Y")
-    printf "Week starts on %s.\n\n" "$start_day_formatted"
+    printf "Week starts on %s.\n\n" "$(date -d "$(week_to_date "$file")" "+%d/%m/%Y")"
 
-    legend_string=""
-    for day_full_name in "${display_week_array[@]}"; do
-        header_line=$(grep "^# ${day_full_name}," "$file.md")
-        if [ -n "$header_line" ]; then
-            date_part=$(echo "$header_line" | awk -F', ' '{print $2}' | awk '{print $1}')
-            day_abbr=$(echo "$day_full_name" | cut -c1-3 | tr '[:upper:]' '[:lower:]')
+    for i in "${!file_day_names[@]}"; do
+        header=$(grep -m1 "^# ${file_day_names[$i]}," "$file.md")
+        header="${header%$'\r'}"
+        if [ -n "$header" ]; then
             if [ -n "$legend_string" ]; then
                 legend_string+=", "
             fi
-            legend_string+="${day_abbr} (${date_part})"
+            legend_string+="${file_day_abbrs[$i]} (${header#*, })"
         fi
     done
     printf "Current week: %s\n\n" "$legend_string"
 
-    awk_output=$(awk '
-    /^# / {
-        current_day = substr($0, 3);
-        sub(/,.*$/, "", current_day);
-        next;
-    }
-    /^- / {
-        print current_day "::" $0 " (" NR ")";
-    }
-    ' "$file.md")
-
-    for ordered_day in "${display_week_array[@]}"; do
-        day_tasks=$(echo "$awk_output" | grep "^${ordered_day}::")
+    for i in "${!file_day_names[@]}"; do
+        day_tasks=$(awk -v header="# ${file_day_names[$i]}," -v abbr="${file_day_abbrs[$i]}" '
+            /^# / { in_day = (index($0, header) == 1); next }
+            { sub(/\r$/, "") }
+            in_day && /^- / { print $0 " (" abbr "." ++n ")" }
+        ' "$file.md")
 
         if [ -n "$day_tasks" ]; then
-            printf "%s:\n" "$ordered_day"
-            echo "$day_tasks" | sed 's/^[^:]*:://'
-            printf "\\n"
+            printf "%s:\n%s\n\n" "${file_day_names[$i]}" "$day_tasks"
         fi
     done
 }
 
+weekly_files_glob="[0-9][0-9][0-9][0-9][0-9][0-9].md"
+
 show_all_files() {
     echo "All markdown files in $WOCHE_DIR:"
-    ls -1 ./*.md
+    # shellcheck disable=SC2086  # the glob must expand
+    ls -1 $weekly_files_glob 2> /dev/null
 }
 
 add_task() {
     local day_name="$1"
     local task_text="$2"
+    local header_line
+
+    header_line=$(day_header_line "$day_name")
 
     # Check if the day header exists in the file
-    if ! grep -q "^# $day_name," "$file.md"; then
+    if [ -z "$header_line" ]; then
         # Detect file language
         local file_lang
         file_lang=$(detect_file_language "$file.md")
@@ -224,26 +418,27 @@ add_task() {
         fi
     fi
 
-    escaped_task=$(sed 's/[\/&]/\\&/g' <<< "$task_text")
-    sed -i "/# $day_name/ a\\- $escaped_task" "$file.md"
+    if [ -z "$task_text" ]; then
+        echo "Error: Please give the task text."
+        exit 1
+    fi
+
+    # New tasks go to the end of the day
+    write_line insert-after "$(day_insert_line "$day_name")" "- $task_text"
     echo "Task '$task_text' added to $day_name."
 }
 
 search_files() {
-    search_term="$1"
-    echo "Searching for '$search_term' in markdown files:"
-    grep -n "$search_term" ./*.md
-}
+    local search_term="$1"
 
-mark_task_done() {
-    line_number="$1"
-    sed -i "${line_number}s/^- /- [x] /" "$file.md"
-    echo "Task on line ${line_number} marked as done."
+    echo "Searching for '$search_term' in markdown files:"
+    # shellcheck disable=SC2086  # the glob must expand
+    grep -HnF -- "$search_term" $weekly_files_glob 2> /dev/null
 }
 
 open_file_in_editor() {
     if [ -z "$EDITOR" ]; then
-        echo "Error: $EDITOR environment variable is not set. Please set it to your preferred editor (e.g., export EDITOR=nano)."
+        echo "Error: The EDITOR environment variable is not set. Please set it to your preferred editor (e.g., export EDITOR=nano)."
         exit 1
     fi
     "$EDITOR" "$file.md"
@@ -344,7 +539,7 @@ normalize_dir() {
         "~"*)
             user="${dir%%/*}"
             user="${user#"~"}"
-            user_home=$(getent passwd "$user" | cut -d: -f6)
+            user_home=$(getent passwd -- "$user" | cut -d: -f6)
             if [ -n "$user_home" ]; then
                 dir="$user_home${dir#"~$user"}"
             fi
@@ -445,7 +640,7 @@ set_config_value() {
         {
             echo "# Woche Configuration File"
             printf 'WOCHE_LANGUAGE=%q\n' "${woche_config_language:-en}"
-            printf 'WOCHE_DIR=%q\n' "${woche_config_dir:-${HOME}/woche}"
+            printf 'WOCHE_DIR=%q\n' "${woche_config_dir:-$(normalize_dir "${HOME}/woche")}"
         } > "$WOCHE_CONFIG" || return 1
     fi
 

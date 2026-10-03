@@ -12,6 +12,7 @@ mkdir -p "$HOME"
 
 repo_dir=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
 woche_script_path="$repo_dir/woche.sh"
+q_woche_script_path=$(printf %q "$woche_script_path")
 
 # shellcheck source=functions.sh
 source "$repo_dir/functions.sh"
@@ -33,12 +34,12 @@ assert_contains() {
     fi
 }
 
-# Test with more than 3 arguments
-output=$("$woche_script_path" mon "Test task" "Argument" "Extra argument")
-if [[ "$output" == *"Woche - Weekly Task Manager"* ]]; then
-    echo "Test 'more than 3 arguments' command: PASSED"
+# Test with more than 4 arguments
+output=$("$woche_script_path" edit mon 1 "Test task" "Extra argument")
+if [[ "$output" == *"Error: Too many arguments."* ]]; then
+    echo "Test 'more than 4 arguments' command: PASSED"
 else
-    echo "Test 'more than 3 arguments' command: FAILED"
+    echo "Test 'more than 4 arguments' command: FAILED"
     exit 1
 fi
 
@@ -272,7 +273,7 @@ output=$("$woche_script_path" create)
 output=$("$woche_script_path" mon "Task to be marked as done")
 line_to_mark_done=$(grep -n "Task to be marked as done" "$WOCHE_DIR/$file.md" | cut -d: -f1)
 output=$("$woche_script_path" "done" "$line_to_mark_done")
-if [[ "$output" == *"Task on line $line_to_mark_done marked as done."* ]]; then
+if [[ "$output" == *"Line $line_to_mark_done marked as done."* ]]; then
     echo "Test 'done' command: PASSED"
 else
     echo "Test 'done' command: FAILED"
@@ -501,9 +502,9 @@ if [[ "$output" == *"WOCHE_DIR is not set"* ]]; then
 else
     echo "Test hint stays out of scripts (stderr not a TTY): PASSED"
 fi
-output=$(env -u WOCHE_DIR HOME="$home" script -qec "$woche_script_path show" /dev/null)
+output=$(env -u WOCHE_DIR HOME="$home" script -qec "$q_woche_script_path show" /dev/null)
 assert_contains "v1.5 config without WOCHE_DIR prints a hint" "$output" "WOCHE_DIR is not set in"
-env -u WOCHE_DIR HOME="$home" script -qec "$woche_script_path show > '$test_root/stdout.txt'" /dev/null > /dev/null
+env -u WOCHE_DIR HOME="$home" script -qec "$q_woche_script_path show > '$test_root/stdout.txt'" /dev/null > /dev/null
 output=$(cat "$test_root/stdout.txt")
 if [[ "$output" == *"WOCHE_DIR is not set"* ]] || [[ "$output" == *"to choose the directory"* ]]; then
     echo "Test hint goes to stderr: FAILED"
@@ -512,7 +513,7 @@ else
     echo "Test hint goes to stderr: PASSED"
 fi
 home="$test_root/init"
-output=$(env -u WOCHE_DIR HOME="$home" script -qec "$woche_script_path show" /dev/null)
+output=$(env -u WOCHE_DIR HOME="$home" script -qec "$q_woche_script_path show" /dev/null)
 if [[ "$output" == *"WOCHE_DIR is not set"* ]]; then
     echo "Test no hint when the config has WOCHE_DIR: FAILED"
     exit 1
@@ -541,7 +542,7 @@ assert_contains "German mode rejects 'mon'" "$output" "Error: Invalid command."
 home="$test_root/wizard"
 mkdir -p "$home"
 output=$(printf 'de\n%s\n' "$test_root/wizard_files" | \
-    env -u WOCHE_DIR -u WOCHE_LANGUAGE HOME="$home" script -qec "$woche_script_path create" /dev/null)
+    env -u WOCHE_DIR -u WOCHE_LANGUAGE HOME="$home" script -qec "$q_woche_script_path create" /dev/null)
 assert_contains "first interactive run asks first" "$output" "Welcome to woche!"
 assert_contains "first interactive run then runs the command" "$output" "has been created."
 if grep -q "^# Montag," "$test_root/wizard_files/$current_week.md" 2> /dev/null; then
@@ -554,7 +555,7 @@ fi
 # Test no wizard when stdin is not a terminal, even if stdout is
 home="$test_root/wizard_no_stdin"
 mkdir -p "$home"
-output=$(env -u WOCHE_DIR -u WOCHE_LANGUAGE HOME="$home" script -qec "$woche_script_path create < /dev/null" /dev/null)
+output=$(env -u WOCHE_DIR -u WOCHE_LANGUAGE HOME="$home" script -qec "$q_woche_script_path create < /dev/null" /dev/null)
 if [[ "$output" != *"Welcome to woche!"* ]] && [ ! -e "$home/.woche/config" ]; then
     echo "Test no wizard without a terminal on stdin: PASSED"
 else
@@ -566,9 +567,9 @@ fi
 home="$test_root/wizard_env"
 mkdir -p "$home"
 output=$(env HOME="$home" WOCHE_DIR="$test_root/wizard_env_files" WOCHE_LANGUAGE=en \
-    script -qec "$woche_script_path create < /dev/null" /dev/null)
+    script -qec "$q_woche_script_path create < /dev/null" /dev/null)
 output=$(env HOME="$home" WOCHE_DIR="$test_root/wizard_env_files" WOCHE_LANGUAGE=en \
-    script -qec "$woche_script_path show" /dev/null)
+    script -qec "$q_woche_script_path show" /dev/null)
 if [[ "$output" != *"Welcome to woche!"* ]] && [ ! -e "$home/.woche/config" ]; then
     echo "Test no wizard when the environment sets everything: PASSED"
 else
@@ -600,3 +601,214 @@ if [ "$(id -u)" != 0 ]; then
     root_home=$(getent passwd root | cut -d: -f6)
     assert_contains "~user is expanded" "$output" "$root_home/woche_test_never_created"
 fi
+
+# --- v1.6: task addresses and the week file format ---
+
+home="$test_root/parser"
+files="$test_root/parser_files"
+woche_p() {
+    woche_in "$home" WOCHE_DIR="$files" "$@"
+}
+week_file="$files/$current_week.md"
+
+output=$(woche_p -- create)
+output=$(woche_p -- mon "first")
+output=$(woche_p -- mon "second")
+output=$(woche_p -- tue "on tuesday")
+
+# Test new tasks go to the end of the day
+monday_block=$(sed -n '/^# Monday,/,/^# Tuesday,/p' "$week_file")
+assert_contains "new tasks go to the end of the day" "$monday_block" "- first
+- second"
+
+# Test 'show' prints the task addresses
+output=$(woche_p -- show)
+assert_contains "'show' prints mon.1" "$output" "- first (mon.1)"
+assert_contains "'show' prints mon.2" "$output" "- second (mon.2)"
+assert_contains "'show' numbers each day from 1" "$output" "- on tuesday (tue.1)"
+
+# Test 'done <day> <n>'
+output=$(woche_p -- "done" mon 2)
+assert_contains "'done mon 2'" "$output" "Task mon.2 marked as done."
+assert_contains "'done mon 2' changes the right task" "$(cat "$week_file")" "- [x] second"
+
+# Test 'done' on a finished task
+output=$(woche_p -- "done" mon.2)
+assert_contains "'done mon.2' on a finished task" "$output" "Task mon.2 is already done."
+
+# Test 'edit' keeps a finished task finished and keeps special characters
+output=$(woche_p -- edit mon 2 'second & /done\ $HOME')
+assert_contains "'edit mon 2'" "$output" "Task mon.2 edited."
+assert_contains "'edit' keeps [x] and the text as typed" "$(cat "$week_file")" '- [x] second & /done\ $HOME'
+
+# Test a task that does not exist
+output=$(woche_p -- "done" mon 9)
+assert_contains "missing task" "$output" "Error: Task mon.9 does not exist."
+
+# Test a missing task number
+output=$(woche_p -- "done" mon)
+assert_contains "missing task number" "$output" "Error: Tell which task"
+
+# Test an invalid day in an address
+output=$(woche_p -- "done" xyz 1)
+assert_contains "invalid day in an address" "$output" "Error: Invalid day 'xyz'."
+
+# Test a line number that is not a task cannot be edited (it used to overwrite headers)
+output=$(woche_p -- edit 1 "oops")
+assert_contains "'edit' on a header line" "$output" "Error: Line 1 is not a task."
+assert_contains "header kept" "$(head -n 1 "$week_file")" "# Monday,"
+output=$(woche_p -- "done" 4)
+assert_contains "'done' on an empty line" "$output" "Error: Line 4 is not a task."
+
+# Test 'delete <day> <n>'
+output=$(echo "y" | woche_p -- delete mon 1)
+assert_contains "'delete mon 1'" "$output" "Task mon.1 deleted."
+if grep -q "^- first$" "$week_file"; then
+    echo "Test 'delete mon 1' removes the task: FAILED"
+    exit 1
+else
+    echo "Test 'delete mon 1' removes the task: PASSED"
+fi
+
+# Test 'search' is literal, not a regex
+output=$(woche_p -- tue "costs 1+1 [draft]")
+output=$(woche_p -- search "1+1 [draft]")
+assert_contains "'search' finds literal text" "$output" "$current_week.md:"
+output=$(woche_p -- search "c.sts")
+if [[ "$output" == *"costs"* ]]; then
+    echo "Test 'search' does not treat . as a wildcard: FAILED"
+    exit 1
+else
+    echo "Test 'search' does not treat . as a wildcard: PASSED"
+fi
+
+# Test 'open' without EDITOR names the variable
+output=$(woche_p EDITOR= -- open)
+assert_contains "'open' without EDITOR" "$output" "Error: The EDITOR environment variable is not set."
+
+# Test addresses in a German file, with German or English day names
+home_de="$test_root/parser_de"
+files_de="$test_root/parser_de_files"
+output=$(woche_in "$home_de" WOCHE_DIR="$files_de" WOCHE_LANGUAGE=de -- create)
+output=$(woche_in "$home_de" WOCHE_DIR="$files_de" WOCHE_LANGUAGE=de -- mont "erste")
+output=$(woche_in "$home_de" WOCHE_DIR="$files_de" WOCHE_LANGUAGE=de -- show)
+assert_contains "'show' in a German file" "$output" "- erste (mont.1)"
+assert_contains "German legend" "$output" "Current week: mont ("
+output=$(woche_in "$home_de" WOCHE_DIR="$files_de" WOCHE_LANGUAGE=de -- "done" mon 1)
+assert_contains "English address in a German file" "$output" "Task mont.1 marked as done."
+
+# Test a week across the new year gets the right dates
+output=$(woche_p WOCHE_WEEK=261228 -- create)
+new_year=$(cat "$files/261228.md")
+assert_contains "week across the new year: Thursday" "$new_year" "# Thursday, 31/12"
+assert_contains "week across the new year: Friday" "$new_year" "# Friday, 1/1"
+assert_contains "week across the new year: Sunday" "$new_year" "# Sunday, 3/1"
+
+# Test WOCHE_WEEK adds to that week
+output=$(woche_p WOCHE_WEEK=261228 -- fri "new year")
+assert_contains "WOCHE_WEEK adds to that week" "$(cat "$files/261228.md")" "# Friday, 1/1
+- new year"
+
+# Test WOCHE_WEEK must be a Monday
+output=$(woche_p WOCHE_WEEK=261229 -- show)
+assert_contains "WOCHE_WEEK must be a Monday" "$output" "Error: WOCHE_WEEK must be the Monday"
+
+# Test a week across a month end
+output=$(woche_p WOCHE_WEEK=261026 -- create)
+assert_contains "week across a month end" "$(cat "$files/261026.md")" "# Sunday, 1/11"
+
+# Test unquoted text is refused instead of cut to its first word
+output=$(woche_p -- mon "keep me")
+output=$(woche_p -- edit mon.1 Call mom)
+assert_contains "'edit' with unquoted text" "$output" "Error: Too many arguments."
+output=$(woche_p -- edit mon 1 Call mom)
+assert_contains "'edit <day> <n>' with unquoted text" "$output" "Error: Too many arguments."
+line_keep=$(grep -n "^- keep me$" "$week_file" | cut -d: -f1)
+output=$(woche_p -- edit "$line_keep" Buy milk)
+assert_contains "'edit <line>' with unquoted text" "$output" "Error: Too many arguments."
+output=$(woche_p -- mon buy milk)
+assert_contains "adding unquoted text" "$output" "Error: Too many arguments."
+output=$(woche_p -- today buy milk)
+assert_contains "'today' with unquoted text" "$output" "Error: Too many arguments."
+output=$(woche_p -- search two words)
+assert_contains "'search' with unquoted text" "$output" "Error: Too many arguments."
+output=$(woche_p -- "done" mon 1 extra)
+assert_contains "'done' with an extra argument" "$output" "Error: Too many arguments."
+if grep -q "^- keep me$" "$week_file" && ! grep -q "^- buy$" "$week_file"; then
+    echo "Test unquoted text leaves the file alone: PASSED"
+else
+    echo "Test unquoted text leaves the file alone: FAILED"
+    exit 1
+fi
+
+# Test task number 0 and absurd numbers fail cleanly
+output=$(woche_p -- "done" mon 0 2>&1)
+assert_contains "task number 0" "$output" "Error: Task mon.0 does not exist."
+output=$(woche_p -- "done" 0 2>&1)
+assert_contains "line number 0" "$output" "Error: Line 0 is not a task."
+output=$(woche_p -- "done" mon 99999999999999999999 2>&1)
+if [[ "$output" == *"does not exist"* ]] && [[ "$output" != *"expression"* ]]; then
+    echo "Test huge task number: PASSED"
+else
+    echo "Test huge task number: FAILED"
+    exit 1
+fi
+output=$(woche_p -- "done" mon 02 2>&1)
+assert_contains "leading zeros" "$output" "Task mon.2"
+
+# Test a new task goes after the indented lines of the last task
+home_sub="$test_root/sub"
+files_sub="$test_root/sub_files"
+output=$(woche_in "$home_sub" WOCHE_DIR="$files_sub" -- create)
+output=$(woche_in "$home_sub" WOCHE_DIR="$files_sub" -- mon "parent")
+sed -i 's/^- parent$/- parent\n  - child/' "$files_sub/$current_week.md"
+output=$(woche_in "$home_sub" WOCHE_DIR="$files_sub" -- mon "next")
+assert_contains "new task after indented lines" "$(cat "$files_sub/$current_week.md")" "- parent
+  - child
+- next"
+
+# Test 'done' on an unchecked box and 'edit' with [x] in the text
+output=$(woche_in "$home_sub" WOCHE_DIR="$files_sub" -- mon "[ ] boxed")
+output=$(woche_in "$home_sub" WOCHE_DIR="$files_sub" -- "done" mon 3)
+assert_contains "'done' on '- [ ]'" "$(cat "$files_sub/$current_week.md")" "- [x] boxed"
+output=$(woche_in "$home_sub" WOCHE_DIR="$files_sub" -- edit mon 3 "[x] boxed again")
+if grep -q '^- \[x\] boxed again$' "$files_sub/$current_week.md"; then
+    echo "Test 'edit' does not double [x]: PASSED"
+else
+    echo "Test 'edit' does not double [x]: FAILED"
+    exit 1
+fi
+
+# Test CRLF files show without carriage returns
+sed -i 's/$/\r/' "$files_sub/$current_week.md"
+output=$(woche_in "$home_sub" WOCHE_DIR="$files_sub" -- show)
+if [[ "$output" == *$'\r'* ]]; then
+    echo "Test CRLF file shows without carriage returns: FAILED"
+    exit 1
+else
+    echo "Test CRLF file shows without carriage returns: PASSED"
+fi
+
+# Test a write failure is reported, not hidden behind a success message
+if [ "$(id -u)" != 0 ]; then
+    chmod a-w "$week_file"
+    output=$(woche_p -- edit mon 1 "not written" 2>&1)
+    chmod u+w "$week_file"
+    assert_contains "write failure is reported" "$output" "Error: Could not write"
+fi
+
+# Test every command refuses unquoted extra words
+home_args="$test_root/args"
+mkdir -p "$home_args/.woche"
+printf 'WOCHE_LANGUAGE=en\nWOCHE_DIR=%s\n' "$test_root/args_files" > "$home_args/.woche/config"
+config_before=$(cat "$home_args/.woche/config")
+for args in "config dir /tmp/My Tasks" "config language de x" "show last x" "create x" "all x" "open x" "init a"; do
+    # shellcheck disable=SC2086  # split the words on purpose
+    output=$(woche_in "$home_args" -- $args < /dev/null)
+    assert_contains "'$args' is refused" "$output" "Error: Too many arguments."
+done
+assert_contains "refused commands leave the config alone" "$(cat "$home_args/.woche/config")" "$config_before"
+
+# Test a line number label drops leading zeros
+output=$(woche_p -- "done" "00$line_keep")
+assert_contains "line label without leading zeros" "$output" "Line $line_keep"

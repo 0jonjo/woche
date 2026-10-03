@@ -10,6 +10,7 @@ source "$woche_lib/functions.sh"
 source "$woche_lib/variables.sh"
 load_config
 
+woche_argc=$#
 day=""
 task="$2"
 export new_task="$3"
@@ -20,9 +21,8 @@ if [ "$#" -eq 0 ]; then
 fi
 
 # Check the number of arguments
-if [ "$#" -gt 3 ]; then
-    help
-    exit 1
+if [ "$#" -gt 4 ]; then
+    too_many_args
 fi
 
 if ! valid_command "$1"; then
@@ -42,10 +42,12 @@ case $1 in
         exit 0
         ;;
     init)
+        max_args 1
         woche_init
         exit 0
         ;;
     config)
+        max_args 3
         if [ -z "$task" ]; then
             show_config
         elif [ "$task" = "language" ]; then
@@ -71,6 +73,14 @@ case $1 in
         ;;
 esac
 
+# Text with spaces must be quoted: refuse extra words before doing anything
+# (done/edit/delete check theirs after reading the task address)
+case $1 in
+    create | all | open) max_args 1 ;;
+    done | edit | delete) ;;
+    *) max_args 2 ;;
+esac
+
 first_run_setup
 missing_dir_hint
 
@@ -88,14 +98,17 @@ case $1 in
         ;;
     delete)
         file_exists
-        line_exists
-        delete_line
+        resolve_task "${@:2}"
+        no_extra_args 0
+        delete_task
         exit 0
         ;;
     edit)
         file_exists
-        line_exists
-        edit_line
+        resolve_task "${@:2}"
+        no_extra_args 1
+        task_text="${task_rest[0]:-}"
+        edit_task
         exit 0
         ;;
     show)
@@ -126,8 +139,9 @@ case $1 in
         ;;
     done)
         file_exists
-        line_exists
-        mark_task_done "$task"
+        resolve_task "${@:2}"
+        no_extra_args 0
+        mark_task_done
         exit 0
         ;;
     open)

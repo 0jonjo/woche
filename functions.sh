@@ -16,7 +16,7 @@ COMMANDS:
     today "<task>"              Add a task to the current day
 
     show [YYMMDD|last]          Show tasks for current week, specific week, or last week
-    all                         List all markdown files in the current directory
+    all                         List all weekly files
 
     done <day> <n>              Mark the n-th task of a day as complete (e.g. done mon 2)
     edit <day> <n> "<new_task>" Edit the n-th task of a day (keeps it done if it was)
@@ -139,7 +139,19 @@ day_task_lines() {
 }
 
 is_task_line() {
-    [[ "$1" =~ ^[0-9]+$ ]] && sed -n "${1}p" "$file.md" | grep -q '^- '
+    [[ "$1" =~ ^[1-9][0-9]*$ ]] && sed -n "${1}p" "$file.md" | grep -q '^- '
+}
+
+# Usage: day_insert_line <full day name>
+# Where a new task goes: after the day's last task (and its indented lines), or the header
+day_insert_line() {
+    awk -v header="# $1," '
+        /^# / { in_day = (index($0, header) == 1); if (in_day) last = NR; next }
+        in_day && /^- / { last = NR; after_task = 1; next }
+        in_day && after_task && /^[ \t]+[^ \t]/ { last = NR; next }
+        { after_task = 0 }
+        END { print last }
+    ' "$file.md"
 }
 
 # Usage: write_line <insert-after|replace|delete> <line number> [text]
@@ -158,7 +170,10 @@ write_line() {
     ' "$file.md" > "$tmp" && cat "$tmp" > "$file.md"
     status=$?
     rm -f "$tmp"
-    return $status
+    if [ "$status" -ne 0 ]; then
+        echo "Error: Could not write $file.md."
+        exit 1
+    fi
 }
 
 # Index (0-6) of a day abbreviation, English or German
@@ -184,19 +199,19 @@ load_file_days() {
     fi
 }
 
-# Resolves a task address into task_line, task_label and task_text (the rest).
-# Accepted: "<day> <n>", "<day>.<n>" and, for compatibility, a plain line number.
+# Resolves a task address into task_line and task_label; the arguments after
+# the address are left in task_rest. Accepted: "<day> <n>", "<day>.<n>" and,
+# for compatibility, a plain line number.
 resolve_task() {
     local day
     local n
     local index
 
     if [[ "$1" =~ ^[0-9]+$ ]]; then
-        task_line="$1"
         task_label="Line $1"
-        task_text="$2"
-        if ! is_task_line "$task_line"; then
-            echo "Error: Line $task_line is not a task."
+        task_rest=("${@:2}")
+        if ! task_line=$(task_number "$1") || ! is_task_line "$task_line"; then
+            echo "Error: Line $1 is not a task."
             exit 1
         fi
         return
@@ -205,11 +220,11 @@ resolve_task() {
     if [[ "$1" =~ ^([a-z]+)\.([0-9]+)$ ]]; then
         day="${BASH_REMATCH[1]}"
         n="${BASH_REMATCH[2]}"
-        task_text="$2"
-    elif [[ "$2" =~ ^[0-9]+$ ]]; then
+        task_rest=("${@:2}")
+    elif [[ "${2:-}" =~ ^[0-9]+$ ]]; then
         day="$1"
         n="$2"
-        task_text="$3"
+        task_rest=("${@:3}")
     else
         echo "Error: Tell which task, e.g. 'mon 2' (the second task on Monday)."
         exit 1
@@ -222,11 +237,44 @@ resolve_task() {
 
     load_file_days
     task_label="Task ${file_day_abbrs[$index]}.$n"
-    task_line=$(day_task_lines "${file_day_names[$index]}" | sed -n "${n}p")
-    if [ "$n" -lt 1 ] || [ -z "$task_line" ]; then
+    if ! n=$(task_number "$n"); then
         echo "Error: $task_label does not exist."
         exit 1
     fi
+    task_label="Task ${file_day_abbrs[$index]}.$n"
+    task_line=$(day_task_lines "${file_day_names[$index]}" | sed -n "${n}p")
+    if [ -z "$task_line" ]; then
+        echo "Error: $task_label does not exist."
+        exit 1
+    fi
+}
+
+# A positive number without leading zeros (fails for 0 or absurdly big numbers)
+task_number() {
+    if [[ "$1" =~ ^0*([1-9][0-9]{0,6})$ ]]; then
+        echo "${BASH_REMATCH[1]}"
+    else
+        return 1
+    fi
+}
+
+# Usage: no_extra_args <how many arguments may follow the task address>
+no_extra_args() {
+    if [ "${#task_rest[@]}" -gt "$1" ]; then
+        too_many_args
+    fi
+}
+
+# Usage: max_args <n> "$@"-style check against the command line ($# of woche.sh)
+max_args() {
+    if [ "$woche_argc" -gt "$1" ]; then
+        too_many_args
+    fi
+}
+
+too_many_args() {
+    echo "Error: Too many arguments. Put text with spaces in quotes, e.g.: ${woche_name:-woche} mon \"Buy milk\""
+    exit 1
 }
 
 task_at() {
@@ -254,7 +302,7 @@ edit_task() {
     fi
 
     # Keep a finished task finished
-    if task_at "$task_line" | grep -q '^- \[x\] '; then
+    if task_at "$task_line" | grep -q '^- \[[xX]\] ' && [[ "$task_text" != "[x] "* ]]; then
         prefix="- [x] "
     fi
 
@@ -266,12 +314,13 @@ mark_task_done() {
     local line
 
     line=$(task_at "$task_line")
-    if [[ "$line" == "- [x] "* ]]; then
+    if [[ "$line" == "- [x] "* ]] || [[ "$line" == "- [X] "* ]]; then
         echo "$task_label is already done."
         return
     fi
 
-    write_line replace "$task_line" "- [x] ${line#- }"
+    line="${line#- }"
+    write_line replace "$task_line" "- [x] ${line#"[ ] "}"
     echo "$task_label marked as done."
 }
 
@@ -310,6 +359,7 @@ show_file() {
 
     for i in "${!file_day_names[@]}"; do
         header=$(grep -m1 "^# ${file_day_names[$i]}," "$file.md")
+        header="${header%$'\r'}"
         if [ -n "$header" ]; then
             if [ -n "$legend_string" ]; then
                 legend_string+=", "
@@ -322,6 +372,7 @@ show_file() {
     for i in "${!file_day_names[@]}"; do
         day_tasks=$(awk -v header="# ${file_day_names[$i]}," -v abbr="${file_day_abbrs[$i]}" '
             /^# / { in_day = (index($0, header) == 1); next }
+            { sub(/\r$/, "") }
             in_day && /^- / { print $0 " (" abbr "." ++n ")" }
         ' "$file.md")
 
@@ -343,7 +394,6 @@ add_task() {
     local day_name="$1"
     local task_text="$2"
     local header_line
-    local last_task_line
 
     header_line=$(day_header_line "$day_name")
 
@@ -374,8 +424,7 @@ add_task() {
     fi
 
     # New tasks go to the end of the day
-    last_task_line=$(day_task_lines "$day_name" | tail -n 1)
-    write_line insert-after "${last_task_line:-$header_line}" "- $task_text"
+    write_line insert-after "$(day_insert_line "$day_name")" "- $task_text"
     echo "Task '$task_text' added to $day_name."
 }
 
@@ -490,7 +539,7 @@ normalize_dir() {
         "~"*)
             user="${dir%%/*}"
             user="${user#"~"}"
-            user_home=$(getent passwd "$user" | cut -d: -f6)
+            user_home=$(getent passwd -- "$user" | cut -d: -f6)
             if [ -n "$user_home" ]; then
                 dir="$user_home${dir#"~$user"}"
             fi
@@ -591,7 +640,7 @@ set_config_value() {
         {
             echo "# Woche Configuration File"
             printf 'WOCHE_LANGUAGE=%q\n' "${woche_config_language:-en}"
-            printf 'WOCHE_DIR=%q\n' "${woche_config_dir:-${HOME}/woche}"
+            printf 'WOCHE_DIR=%q\n' "${woche_config_dir:-$(normalize_dir "${HOME}/woche")}"
         } > "$WOCHE_CONFIG" || return 1
     fi
 

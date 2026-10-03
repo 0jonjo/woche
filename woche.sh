@@ -10,6 +10,7 @@ source "$woche_lib/functions.sh"
 source "$woche_lib/variables.sh"
 load_config
 
+woche_argc=$#
 day=""
 task="$2"
 export new_task="$3"
@@ -21,8 +22,7 @@ fi
 
 # Check the number of arguments
 if [ "$#" -gt 4 ]; then
-    help
-    exit 1
+    too_many_args
 fi
 
 if ! valid_command "$1"; then
@@ -88,13 +88,16 @@ case $1 in
         ;;
     delete)
         file_exists
-        resolve_task "$2" "$3"
+        resolve_task "${@:2}"
+        no_extra_args 0
         delete_task
         exit 0
         ;;
     edit)
         file_exists
-        resolve_task "$2" "$3" "$4"
+        resolve_task "${@:2}"
+        no_extra_args 1
+        task_text="${task_rest[0]:-}"
         edit_task
         exit 0
         ;;
@@ -114,6 +117,7 @@ case $1 in
         exit 0
         ;;
     today)
+        max_args 2
         file_exists
         day_of_week=$(date +%u)
         day=${week_array[$((day_of_week-1))]}
@@ -121,12 +125,14 @@ case $1 in
         exit 0
         ;;
     search)
+        max_args 2
         search_files "$task"
         exit 0
         ;;
     done)
         file_exists
-        resolve_task "$2" "$3"
+        resolve_task "${@:2}"
+        no_extra_args 0
         mark_task_done
         exit 0
         ;;
@@ -136,6 +142,7 @@ case $1 in
         exit 0
         ;;
     *)
+        max_args 2
         file_exists
         day_abbr=$1
         day_full=""

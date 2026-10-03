@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
 
-source functions.sh
-source variables.sh
-load_config
+# Resolve the library dir from the script's real path, so woche works from
+# any directory and through a symlink (/usr/bin/woche -> /usr/lib/woche/woche.sh)
+woche_lib=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
 
-cd "$path_to_files" > /dev/null || exit
+# shellcheck source=functions.sh
+source "$woche_lib/functions.sh"
+# shellcheck source=variables.sh
+source "$woche_lib/variables.sh"
+load_config
 
 day=""
 task="$2"
 export new_task="$3"
-current_week
-last_week
-export file=$current_week
+
+if [ "$#" -eq 0 ]; then
+    help
+    exit 0
+fi
 
 # Check the number of arguments
 if [ "$#" -gt 3 ]; then
@@ -19,12 +25,60 @@ if [ "$#" -gt 3 ]; then
     exit 1
 fi
 
-# Check if $1 is in the options to check
-if [[ ! " ${options_to_check[@]} " =~ $1 ]]; then
+if ! valid_command "$1"; then
     echo "Error: Invalid command."
     help
     exit 1
 fi
+
+# Commands that don't touch the weekly files
+case $1 in
+    help)
+        help
+        exit 0
+        ;;
+    --version)
+        echo "woche $WOCHE_VERSION"
+        exit 0
+        ;;
+    init)
+        woche_init
+        exit 0
+        ;;
+    config)
+        if [ -z "$task" ]; then
+            show_config
+        elif [ "$task" = "language" ]; then
+            if [ -z "$new_task" ]; then
+                echo "Error: Please specify language (en or de)."
+                echo "Usage: woche.sh config language <en|de>"
+                exit 1
+            fi
+            set_language "$new_task"
+        elif [ "$task" = "dir" ]; then
+            if [ -z "$new_task" ]; then
+                echo "Error: Please specify a directory."
+                echo "Usage: woche.sh config dir <path>"
+                exit 1
+            fi
+            set_dir "$new_task"
+        else
+            echo "Error: Unknown config option '$task'."
+            echo "Usage: woche.sh config [language <en|de> | dir <path>]"
+            exit 1
+        fi
+        exit 0
+        ;;
+esac
+
+first_run_setup
+missing_dir_hint
+
+mkdir -p -- "$WOCHE_DIR" && cd -- "$WOCHE_DIR" > /dev/null || exit 1
+
+current_week
+last_week
+export file=$current_week
 
 case $1 in
     create)
@@ -59,10 +113,6 @@ case $1 in
         show_all_files
         exit 0
         ;;
-    help)
-        help
-        exit 0
-        ;;
     today)
         file_exists
         day_of_week=$(date +%u)
@@ -83,23 +133,6 @@ case $1 in
     open)
         file_exists
         open_file_in_editor
-        exit 0
-        ;;
-    config)
-        if [ -z "$task" ]; then
-            show_config
-        elif [ "$task" = "language" ]; then
-            if [ -z "$new_task" ]; then
-                echo "Error: Please specify language (en or de)."
-                echo "Usage: woche.sh config language <en|de>"
-                exit 1
-            fi
-            set_language "$new_task"
-        else
-            echo "Error: Unknown config option '$task'."
-            echo "Usage: woche.sh config [language <en|de>]"
-            exit 1
-        fi
         exit 0
         ;;
     *)

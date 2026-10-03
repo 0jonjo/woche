@@ -15,6 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Shellcheck
+        run: shellcheck -x --severity=warning woche.sh functions.sh variables.sh tests.sh
+
       - name: Starting tests
         run: |
               echo Starting tests

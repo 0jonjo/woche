@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+# shellcheck shell=bash
+# Sourced by woche.sh, not run directly
 
-export WOCHE_VERSION="1.6.0-dev"
+export WOCHE_VERSION="1.6.0"
 
 export WOCHE_CONFIG="${HOME}/.woche/config"
 

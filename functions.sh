@@ -1,4 +1,5 @@
-#!/usr/bin/env bash
+# shellcheck shell=bash
+# Sourced by woche.sh, not run directly
 # shellcheck disable=SC2154  # globals (file, task, new_task, day names) come from woche.sh and variables.sh
 
 help() {
@@ -6,7 +7,7 @@ help() {
 Woche - Weekly Task Manager
 
 USAGE:
-    woche.sh <command> [arguments]
+    $woche_name <command> [arguments]
 
 COMMANDS:
     create                      Create a new markdown file for the current week
@@ -36,21 +37,21 @@ COMMANDS:
     --version                   Show the version
 
 EXAMPLES:
-    woche.sh create
-    woche.sh mon "Team meeting at 10am"
-    woche.sh today "Review pull requests"
-    woche.sh show 260203
-    woche.sh done mon 2
-    woche.sh edit tue 1 "Call the bank"
-    woche.sh search "meeting"
-    woche.sh config
-    woche.sh config language de
-    woche.sh config dir ~/Documents/woche
+    $woche_name create
+    $woche_name mon "Team meeting at 10am"
+    $woche_name today "Review pull requests"
+    $woche_name show 260203
+    $woche_name done mon 2
+    $woche_name edit tue 1 "Call the bank"
+    $woche_name search "meeting"
+    $woche_name config
+    $woche_name config language de
+    $woche_name config dir ~/Documents/woche
 
 ENVIRONMENT:
     WOCHE_DIR, WOCHE_LANGUAGE   Override the config file (~/.woche/config)
     WOCHE_WEEK=YYMMDD           Work on another week (its Monday), e.g. to create
-                                or fill last week: WOCHE_WEEK=260921 woche.sh fri "..."
+                                or fill last week: WOCHE_WEEK=260921 $woche_name fri "..."
 
 For more information, visit: https://github.com/0jonjo/woche
 EOF
@@ -265,7 +266,7 @@ no_extra_args() {
     fi
 }
 
-# Usage: max_args <n> "$@"-style check against the command line ($# of woche.sh)
+# Usage: max_args <n>   (checks the number of arguments woche was called with)
 max_args() {
     if [ "$woche_argc" -gt "$1" ]; then
         too_many_args
@@ -273,7 +274,7 @@ max_args() {
 }
 
 too_many_args() {
-    echo "Error: Too many arguments. Put text with spaces in quotes, e.g.: ${woche_name:-woche} mon \"Buy milk\""
+    echo "Error: Too many arguments. Put text with spaces in quotes, e.g.: $woche_name mon \"Buy milk\""
     exit 1
 }
 
@@ -406,11 +407,11 @@ add_task() {
         # Provide helpful error message
         if [ "$file_lang" = "en" ] && [ "$WOCHE_LANGUAGE" = "de" ]; then
             echo "Error: This file uses English day names, but you're using German commands."
-            echo "Use English commands (mon, tue, wed, etc.) or create a new file with: woche.sh create"
+            echo "Use English commands (mon, tue, wed, etc.) or create a new file with: $woche_name create"
             exit 1
         elif [ "$file_lang" = "de" ] && [ "$WOCHE_LANGUAGE" = "en" ]; then
             echo "Error: This file uses German day names, but you're using English commands."
-            echo "Use German commands (mont, die, mit, etc.) or create a new file with: woche.sh create"
+            echo "Use German commands (mont, die, mit, etc.) or create a new file with: $woche_name create"
             exit 1
         else
             echo "Error: Day header '# $day_name' not found in $file.md"
@@ -512,7 +513,7 @@ first_run_setup() {
         return
     fi
     if [ ! -f "$WOCHE_CONFIG" ] && [ -t 0 ] && [ -t 1 ]; then
-        echo "Welcome to woche! Let's set it up (run 'woche.sh init' to change it later)."
+        echo "Welcome to woche! Let's set it up (run '$woche_name init' to change it later)."
         echo ""
         woche_init
         echo ""
@@ -553,7 +554,7 @@ normalize_dir() {
 missing_dir_hint() {
     if [ -f "$WOCHE_CONFIG" ] && [ -z "$woche_config_dir" ] && [ -z "$woche_env_dir" ] && [ -t 2 ]; then
         echo "Note: WOCHE_DIR is not set in $WOCHE_CONFIG, using $WOCHE_DIR." >&2
-        echo "      Run 'woche.sh config dir <path>' to choose the directory of your weekly files." >&2
+        echo "      Run '$woche_name config dir <path>' to choose the directory of your weekly files." >&2
     fi
 }
 
@@ -682,7 +683,7 @@ show_config() {
     echo "Config file: $WOCHE_CONFIG"
 
     if [ ! -f "$WOCHE_CONFIG" ]; then
-        echo "Status: Using defaults (config file does not exist). Run 'woche.sh init' to set it up."
+        echo "Status: Using defaults (config file does not exist). Run '$woche_name init' to set it up."
     else
         echo "Status: Config file found"
     fi

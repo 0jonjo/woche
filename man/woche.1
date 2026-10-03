@@ -1,0 +1,116 @@
+.TH WOCHE 1 "October 2026" "woche 1.6.0" "User Commands"
+.SH NAME
+woche \- weekly task manager for the command line
+.SH SYNOPSIS
+.B woche
+.I command
+.RI [ arguments ]
+.SH DESCRIPTION
+.B woche
+keeps one Markdown file per week, named after the week's Monday
+.RI ( YYMMDD.md ),
+with a section per day:
+.PP
+.RS
+.nf
+# Monday, 28/9
+\- open task
+\- [x] finished task
+.fi
+.RE
+.PP
+The files are plain Markdown: they can be edited by hand, synced or kept in git.
+.SH COMMANDS
+.TP
+.B create
+Create the file for the current week.
+.TP
+.BI "mon " "\(dqtask\(dq"
+Add a task to the end of a day.
+Days: mon, tue, wed, thu, fri, sat, sun (German: mont, die, mit, don, fre, sam, son).
+.TP
+.BI "today " "\(dqtask\(dq"
+Add a task to the current day.
+.TP
+.BR show " [" last | \fIYYMMDD\fR]
+Show the tasks of the current, last or given week.
+Each task gets an address such as
+.BR mon.2 ,
+the second task on Monday.
+.TP
+.BI "done " "day n"
+Mark a task as finished.
+.TP
+.BI "edit " "day n \(dqnew text\(dq"
+Change the text of a task. A finished task stays finished.
+.TP
+.BI "delete " "day n"
+Delete a task, after confirmation.
+.TP
+.BI "search " "\(dqtext\(dq"
+Search all weeks for a literal text.
+.TP
+.B all
+List the weekly files.
+.TP
+.B open
+Open the current week in
+.BR $EDITOR .
+.TP
+.B init
+Choose the language and the directory of the weekly files.
+Runs by itself the first time woche is used in a terminal.
+.TP
+.B config
+Show the configuration.
+.TP
+.BR "config language " en | de
+Language of the day names in new weeks.
+.TP
+.BI "config dir " path
+Directory of the weekly files. Existing files are not moved.
+.TP
+.B help
+Show a summary of the commands.
+.TP
+.B \-\-version
+Show the version.
+.PP
+Tasks can also be addressed as
+.B mon.2
+or by the line number in the file, as in older versions.
+.SH ENVIRONMENT
+.TP
+.B WOCHE_DIR
+Directory of the weekly files (overrides the config file). Default:
+.IR ~/woche .
+.TP
+.B WOCHE_LANGUAGE
+.BR en " or " de
+(overrides the config file).
+.TP
+.B WOCHE_WEEK
+Work on another week, given as its Monday in
+.I YYMMDD
+format, e.g. to fill in last week.
+.TP
+.B EDITOR
+Editor used by
+.BR open .
+.SH FILES
+.TP
+.I ~/.woche/config
+Shell-style settings:
+.B WOCHE_LANGUAGE
+and
+.BR WOCHE_DIR .
+.SH EXAMPLES
+.nf
+woche create
+woche mon "Team meeting at 10am"
+woche show
+woche done mon 1
+WOCHE_WEEK=260921 woche fri "Filled in later"
+.fi
+.SH SEE ALSO
+https://github.com/0jonjo/woche

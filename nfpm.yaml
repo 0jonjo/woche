@@ -1,0 +1,50 @@
+# Build with `make deb` (sets VERSION from variables.sh)
+name: woche
+arch: all
+platform: linux
+version: ${VERSION}
+section: utils
+priority: optional
+maintainer: Joao Gilberto Saraiva <jgilbertons@gmail.com>
+description: |
+  Weekly task manager for the command line
+  Woche keeps one Markdown file per week, with a section per day.
+  Add, finish, edit and search tasks from the terminal, in English or German.
+homepage: https://github.com/0jonjo/woche
+license: GPL-3.0
+
+# No Depends: bash, coreutils, sed, grep and awk are all in a base Debian system
+suggests:
+  - bash-completion
+
+contents:
+  - src: ./woche.sh
+    dst: /usr/lib/woche/woche.sh
+    file_info:
+      mode: 0755
+  - src: ./functions.sh
+    dst: /usr/lib/woche/functions.sh
+    file_info:
+      mode: 0644
+  - src: ./variables.sh
+    dst: /usr/lib/woche/variables.sh
+    file_info:
+      mode: 0644
+  - src: ../lib/woche/woche.sh
+    dst: /usr/bin/woche
+    type: symlink
+  - src: ./build/woche.1.gz
+    dst: /usr/share/man/man1/woche.1.gz
+    file_info:
+      mode: 0644
+  - src: ./completions/woche.bash
+    dst: /usr/share/bash-completion/completions/woche
+    file_info:
+      mode: 0644
+  - src: ./packaging/copyright
+    dst: /usr/share/doc/woche/copyright
+    file_info:
+      mode: 0644
+
+scripts:
+  postinstall: ./packaging/postinstall.sh

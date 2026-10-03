@@ -796,3 +796,19 @@ if [ "$(id -u)" != 0 ]; then
     chmod u+w "$week_file"
     assert_contains "write failure is reported" "$output" "Error: Could not write"
 fi
+
+# Test every command refuses unquoted extra words
+home_args="$test_root/args"
+mkdir -p "$home_args/.woche"
+printf 'WOCHE_LANGUAGE=en\nWOCHE_DIR=%s\n' "$test_root/args_files" > "$home_args/.woche/config"
+config_before=$(cat "$home_args/.woche/config")
+for args in "config dir /tmp/My Tasks" "config language de x" "show last x" "create x" "all x" "open x" "init a"; do
+    # shellcheck disable=SC2086  # split the words on purpose
+    output=$(woche_in "$home_args" -- $args < /dev/null)
+    assert_contains "'$args' is refused" "$output" "Error: Too many arguments."
+done
+assert_contains "refused commands leave the config alone" "$(cat "$home_args/.woche/config")" "$config_before"
+
+# Test a line number label drops leading zeros
+output=$(woche_p -- "done" "00$line_keep")
+assert_contains "line label without leading zeros" "$output" "Line $line_keep"

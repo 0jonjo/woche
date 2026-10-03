@@ -208,12 +208,12 @@ resolve_task() {
     local index
 
     if [[ "$1" =~ ^[0-9]+$ ]]; then
-        task_label="Line $1"
         task_rest=("${@:2}")
         if ! task_line=$(task_number "$1") || ! is_task_line "$task_line"; then
             echo "Error: Line $1 is not a task."
             exit 1
         fi
+        task_label="Line $task_line"
         return
     fi
 
@@ -302,7 +302,7 @@ edit_task() {
     fi
 
     # Keep a finished task finished
-    if task_at "$task_line" | grep -q '^- \[[xX]\] ' && [[ "$task_text" != "[x] "* ]]; then
+    if task_at "$task_line" | grep -q '^- \[[xX]\] ' && [[ "$task_text" != "["[xX]"] "* ]]; then
         prefix="- [x] "
     fi
 

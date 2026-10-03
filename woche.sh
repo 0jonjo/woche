@@ -42,10 +42,12 @@ case $1 in
         exit 0
         ;;
     init)
+        max_args 1
         woche_init
         exit 0
         ;;
     config)
+        max_args 3
         if [ -z "$task" ]; then
             show_config
         elif [ "$task" = "language" ]; then
@@ -69,6 +71,14 @@ case $1 in
         fi
         exit 0
         ;;
+esac
+
+# Text with spaces must be quoted: refuse extra words before doing anything
+# (done/edit/delete check theirs after reading the task address)
+case $1 in
+    create | all | open) max_args 1 ;;
+    done | edit | delete) ;;
+    *) max_args 2 ;;
 esac
 
 first_run_setup
@@ -117,7 +127,6 @@ case $1 in
         exit 0
         ;;
     today)
-        max_args 2
         file_exists
         day_of_week=$(date +%u)
         day=${week_array[$((day_of_week-1))]}
@@ -125,7 +134,6 @@ case $1 in
         exit 0
         ;;
     search)
-        max_args 2
         search_files "$task"
         exit 0
         ;;
@@ -142,7 +150,6 @@ case $1 in
         exit 0
         ;;
     *)
-        max_args 2
         file_exists
         day_abbr=$1
         day_full=""

@@ -27,7 +27,6 @@ assert_contains() {
         echo "Test $1: PASSED"
     else
         echo "Test $1: FAILED"
-        exit 1
         echo "  expected to contain: $3"
         echo "  got: $2"
         exit 1
@@ -156,7 +155,7 @@ fi
 
 ## Check if the task is added on last test
 cd "$WOCHE_DIR" > /dev/null || exit
-if [ -z "$(sed -n "/# $mon/ p" "$file.md")" ]; then
+if ! grep -q "^- Test task$" "$file.md"; then
     echo "Error: Task has not been added."
     exit 1
 fi
@@ -496,7 +495,30 @@ home="$test_root/v15"
 mkdir -p "$home/.woche"
 printf 'WOCHE_LANGUAGE="en"\n' > "$home/.woche/config"
 output=$(woche_in "$home" -- show 2>&1)
+if [[ "$output" == *"WOCHE_DIR is not set"* ]]; then
+    echo "Test hint stays out of scripts (stderr not a TTY): FAILED"
+    exit 1
+else
+    echo "Test hint stays out of scripts (stderr not a TTY): PASSED"
+fi
+output=$(env -u WOCHE_DIR HOME="$home" script -qec "$woche_script_path show" /dev/null)
 assert_contains "v1.5 config without WOCHE_DIR prints a hint" "$output" "WOCHE_DIR is not set in"
+env -u WOCHE_DIR HOME="$home" script -qec "$woche_script_path show > '$test_root/stdout.txt'" /dev/null > /dev/null
+output=$(cat "$test_root/stdout.txt")
+if [[ "$output" == *"WOCHE_DIR is not set"* ]] || [[ "$output" == *"to choose the directory"* ]]; then
+    echo "Test hint goes to stderr: FAILED"
+    exit 1
+else
+    echo "Test hint goes to stderr: PASSED"
+fi
+home="$test_root/init"
+output=$(env -u WOCHE_DIR HOME="$home" script -qec "$woche_script_path show" /dev/null)
+if [[ "$output" == *"WOCHE_DIR is not set"* ]]; then
+    echo "Test no hint when the config has WOCHE_DIR: FAILED"
+    exit 1
+else
+    echo "Test no hint when the config has WOCHE_DIR: PASSED"
+fi
 
 # Test a symlinked config keeps being a symlink
 home="$test_root/symlinked"
@@ -514,3 +536,67 @@ fi
 # Test German mode rejects English day commands
 output=$(woche_in "$home" -- mon "Task")
 assert_contains "German mode rejects 'mon'" "$output" "Error: Invalid command."
+
+# Test the first interactive run asks the questions before the command (needs a TTY: script)
+home="$test_root/wizard"
+mkdir -p "$home"
+output=$(printf 'de\n%s\n' "$test_root/wizard_files" | \
+    env -u WOCHE_DIR -u WOCHE_LANGUAGE HOME="$home" script -qec "$woche_script_path create" /dev/null)
+assert_contains "first interactive run asks first" "$output" "Welcome to woche!"
+assert_contains "first interactive run then runs the command" "$output" "has been created."
+if grep -q "^# Montag," "$test_root/wizard_files/$current_week.md" 2> /dev/null; then
+    echo "Test first interactive run uses the answers right away: PASSED"
+else
+    echo "Test first interactive run uses the answers right away: FAILED"
+    exit 1
+fi
+
+# Test no wizard when stdin is not a terminal, even if stdout is
+home="$test_root/wizard_no_stdin"
+mkdir -p "$home"
+output=$(env -u WOCHE_DIR -u WOCHE_LANGUAGE HOME="$home" script -qec "$woche_script_path create < /dev/null" /dev/null)
+if [[ "$output" != *"Welcome to woche!"* ]] && [ ! -e "$home/.woche/config" ]; then
+    echo "Test no wizard without a terminal on stdin: PASSED"
+else
+    echo "Test no wizard without a terminal on stdin: FAILED"
+    exit 1
+fi
+
+# Test no wizard when the environment already sets everything
+home="$test_root/wizard_env"
+mkdir -p "$home"
+output=$(env HOME="$home" WOCHE_DIR="$test_root/wizard_env_files" WOCHE_LANGUAGE=en \
+    script -qec "$woche_script_path create < /dev/null" /dev/null)
+output=$(env HOME="$home" WOCHE_DIR="$test_root/wizard_env_files" WOCHE_LANGUAGE=en \
+    script -qec "$woche_script_path show" /dev/null)
+if [[ "$output" != *"Welcome to woche!"* ]] && [ ! -e "$home/.woche/config" ]; then
+    echo "Test no wizard when the environment sets everything: PASSED"
+else
+    echo "Test no wizard when the environment sets everything: FAILED"
+    exit 1
+fi
+
+# Test 'config language' as the first command writes a complete config (no hint later)
+home="$test_root/language_first"
+output=$(woche_in "$home" -- config language de)
+config_content=$(cat "$home/.woche/config")
+assert_contains "'config language' first also writes WOCHE_DIR" "$config_content" "WOCHE_DIR=$home/woche"
+
+# Test a relative WOCHE_DIR in the config is relative to HOME, not to the current directory
+home="$test_root/relative_config"
+mkdir -p "$home/.woche"
+printf 'WOCHE_DIR=notes\n' > "$home/.woche/config"
+output=$(cd "$test_root/cwd" && woche_in "$home" -- create)
+if [ -e "$home/notes/$current_week.md" ]; then
+    echo "Test relative WOCHE_DIR in the config is relative to HOME: PASSED"
+else
+    echo "Test relative WOCHE_DIR in the config is relative to HOME: FAILED"
+    exit 1
+fi
+
+# Test ~user is expanded (as root this would create the directory: skip)
+if [ "$(id -u)" != 0 ]; then
+    output=$(woche_in "$home" -- config dir "~root/woche_test_never_created" 2> /dev/null)
+    root_home=$(getent passwd root | cut -d: -f6)
+    assert_contains "~user is expanded" "$output" "$root_home/woche_test_never_created"
+fi

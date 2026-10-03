@@ -262,9 +262,13 @@ load_config() {
         source "$WOCHE_CONFIG"
     fi
 
-    # What the config file alone says ('woche init' suggests these)
+    # What the config file alone says ('woche init' suggests these).
+    # A relative directory in the config is relative to HOME, not to where woche runs.
     woche_config_language="$WOCHE_LANGUAGE"
     woche_config_dir="$WOCHE_DIR"
+    if [ -n "$woche_config_dir" ]; then
+        woche_config_dir=$(cd "$HOME" && normalize_dir "$woche_config_dir")
+    fi
 
     WOCHE_LANGUAGE="${woche_env_language:-${woche_config_language:-en}}"
     WOCHE_DIR="${woche_env_dir:-${woche_config_dir:-${HOME}/woche}}"
@@ -309,6 +313,9 @@ valid_command() {
 # Without a config file, an interactive run asks for the settings first.
 # Scripts, cron and tests (no TTY) silently use the defaults instead.
 first_run_setup() {
+    if [ -n "$woche_env_language" ] && [ -n "$woche_env_dir" ]; then
+        return
+    fi
     if [ ! -f "$WOCHE_CONFIG" ] && [ -t 0 ] && [ -t 1 ]; then
         echo "Welcome to woche! Let's set it up (run 'woche.sh init' to change it later)."
         echo ""
@@ -324,20 +331,32 @@ language_from_locale() {
     esac
 }
 
-# Absolute path, with a leading ~ expanded (also when it came quoted from the config)
+# Absolute path, with a leading ~ or ~user expanded (also when it came quoted)
 normalize_dir() {
     local dir="$1"
+    local user
+    local user_home
+
     # shellcheck disable=SC2088  # matching a literal ~ on purpose
     case "$dir" in
         "~") dir="$HOME" ;;
         "~/"*) dir="$HOME/${dir#"~/"}" ;;
+        "~"*)
+            user="${dir%%/*}"
+            user="${user#"~"}"
+            user_home=$(getent passwd "$user" | cut -d: -f6)
+            if [ -n "$user_home" ]; then
+                dir="$user_home${dir#"~$user"}"
+            fi
+            ;;
     esac
     realpath -ms -- "$dir"
 }
 
-# A v1.5 config has no WOCHE_DIR: say where the files are read from now
+# A v1.5 config has no WOCHE_DIR: say where the files are read from now.
+# Only on a terminal, so cron mails and scripts stay quiet.
 missing_dir_hint() {
-    if [ -f "$WOCHE_CONFIG" ] && [ -z "$woche_config_dir" ] && [ -z "$woche_env_dir" ]; then
+    if [ -f "$WOCHE_CONFIG" ] && [ -z "$woche_config_dir" ] && [ -z "$woche_env_dir" ] && [ -t 2 ]; then
         echo "Note: WOCHE_DIR is not set in $WOCHE_CONFIG, using $WOCHE_DIR." >&2
         echo "      Run 'woche.sh config dir <path>' to choose the directory of your weekly files." >&2
     fi
@@ -421,7 +440,13 @@ set_config_value() {
 
     mkdir -p "$(dirname "$WOCHE_CONFIG")" || return 1
     if [ ! -f "$WOCHE_CONFIG" ]; then
-        echo "# Woche Configuration File" > "$WOCHE_CONFIG" || return 1
+        # A new config gets both settings (config/default values, never the
+        # environment), so it is complete whatever the first command was
+        {
+            echo "# Woche Configuration File"
+            printf 'WOCHE_LANGUAGE=%q\n' "${woche_config_language:-en}"
+            printf 'WOCHE_DIR=%q\n' "${woche_config_dir:-${HOME}/woche}"
+        } > "$WOCHE_CONFIG" || return 1
     fi
 
     tmp=$(mktemp) || return 1

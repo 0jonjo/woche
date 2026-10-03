@@ -16,9 +16,52 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Shellcheck
-        run: shellcheck -x --severity=warning woche.sh functions.sh variables.sh tests.sh
+        run: make lint
 
       - name: Starting tests
         run: |
               echo Starting tests
-              bash tests.sh
+              make test
+
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install nfpm and lintian
+        run: |
+          curl -sSfL "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz" | tar -xz nfpm
+          sudo mv nfpm /usr/local/bin/
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lintian
+        env:
+          NFPM_VERSION: 2.47.0
+
+      - name: make install / uninstall
+        run: |
+          make install DESTDIR="$RUNNER_TEMP/stage" PREFIX=/usr
+          test -x "$RUNNER_TEMP/stage/usr/lib/woche/woche.sh"
+          test "$(readlink -f "$RUNNER_TEMP/stage/usr/bin/woche")" = "$RUNNER_TEMP/stage/usr/lib/woche/woche.sh"
+          make uninstall DESTDIR="$RUNNER_TEMP/stage" PREFIX=/usr
+          test ! -e "$RUNNER_TEMP/stage/usr/lib/woche"
+
+      - name: Build .deb
+        run: make deb
+
+      - name: Lintian
+        run: lintian --fail-on error --suppress-tags no-changelog dist/*.deb
+
+      - name: Install the .deb and smoke test
+        run: |
+          sudo apt-get install -y ./dist/*.deb
+          woche --version
+          export HOME="$(mktemp -d)"
+          woche create
+          woche mon "Smoke test"
+          woche "done" mon 1
+          woche show | grep -F -- "- [x] Smoke test (mon.1)"
+          test ! -e "$HOME/.woche/config"
+          man -w woche
+          sudo apt-get remove -y woche
+          ! command -v woche

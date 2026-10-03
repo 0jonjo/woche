@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags: [ "v*" ]
+
+permissions:
+  contents: write
+
+jobs:
+  deb:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag matches WOCHE_VERSION
+        run: |
+          version=$(sed -n 's/^export WOCHE_VERSION="\(.*\)"/\1/p' variables.sh)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match WOCHE_VERSION $version in variables.sh"
+            exit 1
+          fi
+
+      - name: Tests
+        run: make test
+
+      - name: Install nfpm
+        run: |
+          curl -sSfL "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz" | tar -xz nfpm
+          sudo mv nfpm /usr/local/bin/
+        env:
+          NFPM_VERSION: 2.47.0
+
+      - name: Build .deb
+        run: make deb
+
+      - name: Attach to the release
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/*.deb --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/*.deb --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}

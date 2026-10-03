@@ -3,6 +3,8 @@
 # Resolve the library dir from the script's real path, so woche works from
 # any directory and through a symlink (/usr/bin/woche -> /usr/lib/woche/woche.sh)
 woche_lib=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+# How the user called us ("woche" when installed, "woche.sh" from a checkout)
+woche_name="${0##*/}"
 
 # shellcheck source=functions.sh
 source "$woche_lib/functions.sh"
@@ -53,20 +55,20 @@ case $1 in
         elif [ "$task" = "language" ]; then
             if [ -z "$new_task" ]; then
                 echo "Error: Please specify language (en or de)."
-                echo "Usage: woche.sh config language <en|de>"
+                echo "Usage: $woche_name config language <en|de>"
                 exit 1
             fi
             set_language "$new_task"
         elif [ "$task" = "dir" ]; then
             if [ -z "$new_task" ]; then
                 echo "Error: Please specify a directory."
-                echo "Usage: woche.sh config dir <path>"
+                echo "Usage: $woche_name config dir <path>"
                 exit 1
             fi
             set_dir "$new_task"
         else
             echo "Error: Unknown config option '$task'."
-            echo "Usage: woche.sh config [language <en|de> | dir <path>]"
+            echo "Usage: $woche_name config [language <en|de> | dir <path>]"
             exit 1
         fi
         exit 0

@@ -1,7 +1,6 @@
 # User task files
 *.md
 !README.md
-!IMPROVEMENTS.md
 !.github/**/*.md
 
 # Editor temporary files
@@ -19,6 +18,10 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Build output
+build/
+dist/
 
 # Test directories
 test_output/

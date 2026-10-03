@@ -812,3 +812,21 @@ assert_contains "refused commands leave the config alone" "$(cat "$home_args/.wo
 # Test a line number label drops leading zeros
 output=$(woche_p -- "done" "00$line_keep")
 assert_contains "line label without leading zeros" "$output" "Line $line_keep"
+
+# --- bash completion ---
+# shellcheck source=completions/woche.bash
+source "$repo_dir/completions/woche.bash"
+
+# Usage: complete_words <words...>  (completes the last one)
+complete_words() {
+    COMP_WORDS=("$@")
+    COMP_CWORD=$(( ${#COMP_WORDS[@]} - 1 ))
+    COMPREPLY=()
+    _woche
+    echo "${COMPREPLY[*]}"
+}
+
+assert_contains "completion of commands" "$(complete_words woche "do")" "done"
+assert_contains "completion of days" "$(complete_words woche "done" t)" "tue"
+assert_contains "completion of config languages" "$(complete_words woche config language "")" "en de"
+assert_contains "completion of weeks for show" "$(complete_words "$woche_script_path" show "")" "$current_week"

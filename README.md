@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/logo.svg" alt="woche logo" width="128"></p>
 
-# Woche - v1.6.0
+# Woche - v1.6.1
 
 Woche is a command-line tool for managing weekly tasks using Bash scripts. It helps you create and organize tasks in Markdown files, with support for English and German day names.
 
@@ -22,7 +22,7 @@ Woche is a command-line tool for managing weekly tasks using Bash scripts. It he
 On Debian/Ubuntu, download the `.deb` from the [latest release](https://github.com/0jonjo/woche/releases/latest) and install it:
 
 ```bash
-sudo apt install ./woche_1.6.0_all.deb
+sudo apt install ./woche_1.6.1_all.deb
 ```
 
 From a checkout (any Linux with GNU coreutils):
